@@ -59,7 +59,7 @@ class SettingsScreen extends StatelessWidget {
             trailing: Switch(
               value: true,
               onChanged: (value) {},
-              activeColor: AppColors.primaryBlue,
+              activeThumbColor: AppColors.primaryBlue,
             ),
           ),
           const SizedBox(height: 8),
@@ -71,7 +71,7 @@ class SettingsScreen extends StatelessWidget {
             trailing: Switch(
               value: false,
               onChanged: (value) {},
-              activeColor: AppColors.primaryBlue,
+              activeThumbColor: AppColors.primaryBlue,
             ),
           ),
           const SizedBox(height: 8),
