@@ -29,7 +29,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (user != null) {
       _fullNameController.text = user.fullName;
       _emailController.text = user.email;
-      _mobileController.text = user.mobile;
+      _mobileController.text = user.mobile ?? '';
     }
   }
 
@@ -51,12 +51,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       // In a real app, you would call an API to update the profile
       await Future.delayed(const Duration(seconds: 1));
       
       // Update user in provider (mock update)
       // In a real app, you would update the user here
+      // final authProvider = Provider.of<AuthProvider>(context, listen: false);
       // final updatedUser = authProvider.user?.copyWith(
       //   fullName: _fullNameController.text.trim(),
       //   email: _emailController.text.trim(),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/product_model.dart';
+import '../../providers/favorite_provider.dart';
+import '../../providers/cart_provider.dart';
 import 'package:intl/intl.dart';
 
 class ProductCard extends StatelessWidget {
@@ -68,6 +71,34 @@ class ProductCard extends StatelessWidget {
                     },
                   ),
                 ),
+                // Favorite Button
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Consumer<FavoriteProvider>(
+                    builder: (context, favoriteProvider, child) {
+                      final isFavorite = favoriteProvider.isFavorite(product.id);
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? AppColors.accentRed : AppColors.textSecondary,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            favoriteProvider.toggleFavorite(product.id);
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 // Discount Badge
                 if (product.discountPrice != null)
                   Positioned(
@@ -95,7 +126,7 @@ class ProductCard extends StatelessWidget {
                 // Flash Sale Badge
                 if (product.isFlashSale)
                   Positioned(
-                    top: 8,
+                    bottom: 8,
                     right: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -107,7 +138,7 @@ class ProductCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
-                        'FLASH SALE',
+                        'FLASH',
                         style: TextStyle(
                           color: AppColors.textWhite,
                           fontSize: 10,
@@ -218,29 +249,42 @@ class ProductCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     // Add to Cart Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: product.availableQuantity > 0
-                            ? onAddToCart
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          foregroundColor: AppColors.textWhite,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          minimumSize: const Size(0, 36),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                    Consumer<CartProvider>(
+                      builder: (context, cartProvider, child) {
+                        final isInCart = cartProvider.isInCart(product.id);
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: product.availableQuantity > 0
+                                ? () {
+                                    if (onAddToCart != null) {
+                                      onAddToCart!();
+                                    } else {
+                                      cartProvider.addToCart(product);
+                                    }
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isInCart
+                                  ? AppColors.success
+                                  : AppColors.primaryBlue,
+                              foregroundColor: AppColors.textWhite,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              minimumSize: const Size(0, 36),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            child: Text(
+                              isInCart ? 'In Cart' : 'Add to Cart',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          'Add to Cart',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),

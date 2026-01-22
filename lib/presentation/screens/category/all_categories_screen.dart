@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/home/category_card.dart';
+import '../../widgets/common/shimmer_loader.dart';
 
 class AllCategoriesScreen extends StatelessWidget {
   const AllCategoriesScreen({super.key});
@@ -28,11 +29,10 @@ class AllCategoriesScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: categories.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : GridView.builder(
+      body: Consumer<ProductProvider>(
+        builder: (context, productProvider, child) {
+          if (productProvider.isLoading && productProvider.categories.isEmpty) {
+            return GridView.builder(
               padding: const EdgeInsets.all(16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -40,17 +40,46 @@ class AllCategoriesScreen extends StatelessWidget {
                 mainAxisSpacing: 16,
                 childAspectRatio: 0.85,
               ),
-              itemCount: categories.length,
+              itemCount: 6,
               itemBuilder: (context, index) {
-                final category = categories[index];
-                return CategoryCard(
-                  category: category,
-                  onTap: () {
-                    context.push('/category-products/${category.id}');
-                  },
-                );
+                return const CategoryShimmer();
               },
+            );
+          }
+
+          if (categories.isEmpty) {
+            return const Center(
+              child: Text(
+                'No categories available',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                ),
+              ),
+            );
+          }
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.85,
             ),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              return CategoryCard(
+                category: category,
+                onTap: () {
+                  context.push('/category-products/${category.id}');
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

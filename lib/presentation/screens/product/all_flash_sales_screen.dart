@@ -3,18 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../providers/product_provider.dart';
-import '../../widgets/product/product_card.dart';
-import '../../providers/cart_provider.dart';
+import '../../widgets/home/flash_sale_promotion_card.dart';
+import '../../widgets/common/shimmer_loader.dart';
 
 class AllFlashSalesScreen extends StatelessWidget {
   const AllFlashSalesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final productProvider = Provider.of<ProductProvider>(context);
-    final cartProvider = Provider.of<CartProvider>(context);
-    final flashSaleProducts = productProvider.flashSaleProducts;
-
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
@@ -30,8 +26,27 @@ class AllFlashSalesScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: flashSaleProducts.isEmpty
-          ? Center(
+      body: Consumer<ProductProvider>(
+        builder: (context, productProvider, child) {
+          if (productProvider.isLoading && productProvider.flashSales.isEmpty) {
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: 3,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: const ShimmerLoader(
+                    width: double.infinity,
+                    height: 180,
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                  ),
+                );
+              },
+            );
+          }
+
+          if (productProvider.flashSales.isEmpty) {
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -42,7 +57,7 @@ class AllFlashSalesScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'No flash sale products available',
+                    'No flash sales available',
                     style: TextStyle(
                       fontSize: 16,
                       color: AppColors.textSecondary,
@@ -50,14 +65,21 @@ class AllFlashSalesScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            )
-          : Column(
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
                 // Flash Sale Banner
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
-                  color: AppColors.flashSaleRed,
+                  decoration: BoxDecoration(
+                    color: AppColors.flashSaleRed,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: const Column(
                     children: [
                       Text(
@@ -79,40 +101,21 @@ class AllFlashSalesScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Products Grid
-                Expanded(
-                  child: GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.65,
-                    ),
-                    itemCount: flashSaleProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = flashSaleProducts[index];
-                      return ProductCard(
-                        product: product,
-                        onTap: () {
-                          context.push('/product-detail/${product.id}');
-                        },
-                        onAddToCart: () {
-                          cartProvider.addToCart(product);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${product.name} added to cart'),
-                              backgroundColor: AppColors.success,
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      );
+                const SizedBox(height: 16),
+                // Flash Sales List
+                ...productProvider.flashSales.map((flashSale) {
+                  return FlashSalePromotionCard(
+                    flashSale: flashSale,
+                    onTap: () {
+                      context.push('/flash-sale-products/${flashSale.id}');
                     },
-                  ),
-                ),
+                  );
+                }).toList(),
               ],
             ),
+          );
+        },
+      ),
     );
   }
 }

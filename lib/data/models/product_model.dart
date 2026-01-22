@@ -58,18 +58,22 @@ class ProductModel implements BaseModel {
 
   @override
   ProductModel fromJson(Map<String, dynamic> json) {
+    return ProductModel.fromJsonMap(json);
+  }
+
+  static ProductModel fromJsonMap(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['id'] ?? '',
+      id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
-      unitPrice: (json['unitPrice'] ?? 0).toDouble(),
+      imageUrl: json['image'] ?? json['imageUrl'] ?? '',
+      unitPrice: (json['unitPrice'] ?? json['price'] ?? 0).toDouble(),
       discountPrice: json['discountPrice'] != null
           ? (json['discountPrice'] as num).toDouble()
           : null,
-      availableQuantity: json['availableQuantity'] ?? 0,
+      availableQuantity: json['availableQuantity'] ?? json['stock'] ?? 0,
       deliveryCharge: (json['deliveryCharge'] ?? 0).toDouble(),
-      categoryId: json['categoryId'] ?? '',
+      categoryId: json['categoryId'] ?? json['category'] ?? '',
       isFlashSale: json['isFlashSale'] ?? false,
       flashSaleEndDate: json['flashSaleEndDate'] != null
           ? DateTime.parse(json['flashSaleEndDate'])

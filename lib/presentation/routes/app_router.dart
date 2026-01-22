@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import '../screens/auth/get_started_screen.dart';
 import '../screens/auth/create_account_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
+import '../screens/auth/otp_verification_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/product/flash_sale_detail_screen.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../screens/product/all_flash_sales_screen.dart';
+import '../screens/product/flash_sale_products_screen.dart';
 import '../screens/category/all_categories_screen.dart';
 import '../screens/category/category_products_screen.dart';
 import '../screens/profile/profile_screen.dart';
@@ -17,11 +19,37 @@ import '../screens/contact/contact_us_screen.dart';
 import '../screens/cart/cart_screen.dart';
 import '../screens/cart/checkout_screen.dart';
 import '../providers/product_provider.dart';
+import '../../core/services/storage_service.dart';
 
 class AppRouter {
-  static final GoRouter router = GoRouter(
-    initialLocation: '/get-started',
-    routes: [
+  static GoRouter createRouter() {
+    return GoRouter(
+      initialLocation: '/get-started',
+      redirect: (context, state) async {
+        // Check if user has saved token
+        final accessToken = await StorageService.getAccessToken();
+        final isAuthenticated = accessToken != null;
+        
+        final isLoginPage = state.uri.path == '/get-started' || 
+                           state.uri.path == '/create-account' ||
+                           state.uri.path == '/forgot-password' ||
+                           state.uri.path == '/otp-verification';
+
+        // If user is authenticated and tries to access login pages, redirect to home
+        if (isAuthenticated && isLoginPage) {
+          return '/home';
+        }
+
+        // Allow access to home and public pages even if not authenticated
+        // Only redirect to login for protected pages (profile, settings, etc.)
+        final protectedPages = ['/profile', '/edit-profile', '/settings', '/cart', '/checkout'];
+        if (!isAuthenticated && protectedPages.contains(state.uri.path)) {
+          return '/get-started';
+        }
+
+        return null;
+      },
+      routes: [
       GoRoute(
         path: '/get-started',
         name: 'get-started',
@@ -36,6 +64,15 @@ class AppRouter {
         path: '/forgot-password',
         name: 'forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/otp-verification',
+        name: 'otp-verification',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? 
+                       (state.extra as String? ?? '');
+          return OtpVerificationScreen(email: email);
+        },
       ),
       GoRoute(
         path: '/home',
@@ -91,6 +128,14 @@ class AppRouter {
         builder: (context, state) => const AllFlashSalesScreen(),
       ),
       GoRoute(
+        path: '/flash-sale-products/:saleId',
+        name: 'flash-sale-products',
+        builder: (context, state) {
+          final saleId = state.pathParameters['saleId'] ?? '';
+          return FlashSaleProductsScreen(saleId: saleId);
+        },
+      ),
+      GoRoute(
         path: '/product-detail/:id',
         name: 'product-detail',
         builder: (context, state) {
@@ -129,5 +174,8 @@ class AppRouter {
         },
       ),
     ],
-  );
+    );
+  }
+
+  static final GoRouter router = createRouter();
 }

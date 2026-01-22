@@ -20,9 +20,8 @@ class CreateAccountScreen extends StatefulWidget {
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _fullNameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _mobileController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -32,16 +31,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   @override
   void initState() {
     super.initState();
-    _mobileController.addListener(() => setState(() {}));
     _passwordController.addListener(() => setState(() {}));
     _confirmPasswordController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    _fullNameController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
-    _mobileController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -55,9 +52,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.signUp(
-        fullName: _fullNameController.text.trim(),
+        name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        mobile: _mobileController.text.trim(),
         password: _passwordController.text,
       );
       
@@ -67,7 +63,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       
       if (success) {
         if (context.mounted) {
-          context.go('/home');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authProvider.successMessage ?? 'Account created successfully. Please verify your email.'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          // Navigate to OTP verification screen
+          context.push('/otp-verification?email=${Uri.encodeComponent(_emailController.text.trim())}');
         }
       } else {
         if (context.mounted) {
@@ -105,11 +108,11 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 20),
-                      // Full Name Field
+                      // Name Field
                       CustomTextField(
                         hintText: AppStrings.fullName,
                         prefixIcon: Icons.person_outline,
-                        controller: _fullNameController,
+                        controller: _nameController,
                         validator: Validators.validateName,
                         maxLength: AppConstants.nameMaxLength,
                       ),
@@ -121,23 +124,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         controller: _emailController,
                         validator: Validators.validateEmail,
                         keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 16),
-                      // Mobile Field
-                      CustomTextField(
-                        hintText: AppStrings.mobile,
-                        prefixIcon: Icons.phone_outlined,
-                        controller: _mobileController,
-                        validator: Validators.validateMobile,
-                        keyboardType: TextInputType.phone,
-                        maxLength: AppConstants.mobileMaxLength,
-                        suffixIcon: Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: CharacterCounter(
-                            currentLength: _mobileController.text.length,
-                            maxLength: AppConstants.mobileMaxLength,
-                          ),
-                        ),
                       ),
                       const SizedBox(height: 16),
                       // Password Field

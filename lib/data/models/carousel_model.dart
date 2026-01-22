@@ -1,78 +1,81 @@
 import '../../core/interfaces/base_model.dart';
 
-class CategoryModel implements BaseModel {
+class CarouselModel implements BaseModel {
   final String id;
-  final String title;
   final String image;
-  final String? description;
+  final String title;
+  final String description;
+  final bool isActive;
+  final int order;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  final int? productCount; // Optional, for UI purposes
 
-  CategoryModel({
+  CarouselModel({
     required this.id,
-    required this.title,
     required this.image,
-    this.description,
+    required this.title,
+    required this.description,
+    required this.isActive,
+    required this.order,
     this.createdAt,
     this.updatedAt,
-    this.productCount,
   });
-
-  // Getter for backward compatibility
-  String get name => title;
-  String get imageUrl => image;
 
   @override
   Map<String, dynamic> toJson() {
     return {
       '_id': id,
-      'title': title,
       'image': image,
+      'title': title,
       'description': description,
+      'isActive': isActive,
+      'order': order,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
   @override
-  CategoryModel fromJson(Map<String, dynamic> json) {
-    return CategoryModel.fromJsonMap(json);
+  CarouselModel fromJson(Map<String, dynamic> json) {
+    return CarouselModel.fromJsonMap(json);
   }
 
-  static CategoryModel fromJsonMap(Map<String, dynamic> json) {
-    return CategoryModel(
+  static CarouselModel fromJsonMap(Map<String, dynamic> json) {
+    return CarouselModel(
       id: json['_id'] ?? json['id'] ?? '',
-      title: json['title'] ?? json['name'] ?? '',
-      image: json['image'] ?? json['imageUrl'] ?? '',
-      description: json['description'],
+      image: json['image'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      isActive: json['isActive'] ?? true,
+      order: json['order'] ?? 0,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : null,
-      productCount: json['productCount'],
     );
   }
 
-  CategoryModel copyWith({
+  CarouselModel copyWith({
     String? id,
-    String? title,
     String? image,
+    String? title,
     String? description,
+    bool? isActive,
+    int? order,
     DateTime? createdAt,
     DateTime? updatedAt,
-    int? productCount,
   }) {
-    return CategoryModel(
+    return CarouselModel(
       id: id ?? this.id,
-      title: title ?? this.title,
       image: image ?? this.image,
+      title: title ?? this.title,
       description: description ?? this.description,
+      isActive: isActive ?? this.isActive,
+      order: order ?? this.order,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      productCount: productCount ?? this.productCount,
     );
   }
 }
