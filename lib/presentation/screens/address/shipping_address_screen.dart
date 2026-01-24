@@ -19,6 +19,7 @@ class _ShippingAddressScreenState extends State<ShippingAddressScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final addressProvider = Provider.of<AddressProvider>(context, listen: false);
       addressProvider.loadAddresses();
     });

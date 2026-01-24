@@ -18,13 +18,13 @@ import '../screens/profile/edit_profile_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/settings/change_password_screen.dart';
 import '../screens/profile/coupons_screen.dart';
-import '../screens/contact/contact_us_screen.dart';
-import '../screens/cart/cart_screen.dart';
+import '../screens/contact/contact_us_screen.dart';import '../screens/cart/cart_screen.dart';
 import '../screens/cart/checkout_screen.dart';
 import '../screens/address/shipping_address_screen.dart';
 import '../screens/order/order_history_screen.dart';
 import '../screens/wishlist/wishlist_screen.dart';
 import '../providers/product_provider.dart';
+import '../providers/cart_provider.dart';
 import '../../core/services/storage_service.dart';
 
 class AppRouter {
@@ -115,6 +115,7 @@ class AppRouter {
         name: 'contact-us',
         builder: (context, state) => const ContactUsScreen(),
       ),
+     
       GoRoute(
         path: '/cart',
         name: 'cart',

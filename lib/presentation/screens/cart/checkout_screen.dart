@@ -26,6 +26,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final addressProvider = Provider.of<AddressProvider>(context, listen: false);
       addressProvider.loadAddresses();
     });
@@ -38,7 +39,73 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder() async {
+    if (_paymentMethod == 'Mobile Banking') {
+      _showTransactionDialog();
+      return;
+    }
+    await _executeOrderFlow();
+  }
 
+  Future<void> _showTransactionDialog() async {
+    final transactionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Transaction ID'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Please enter the transaction ID from your mobile banking payment.',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: transactionController,
+                decoration: const InputDecoration(
+                  labelText: 'Transaction ID',
+                  hintText: 'e.g. TXN123456789',
+                  prefixIcon: Icon(Icons.receipt_long),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter transaction ID';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final txnId = transactionController.text.trim();
+                Navigator.of(context).pop();
+                _executeOrderFlow(txnId: txnId);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _executeOrderFlow({String? txnId}) async {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final addressProvider = Provider.of<AddressProvider>(context, listen: false);
     final cartItems = cartProvider.items;
@@ -85,21 +152,46 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final response = await ApiService.createOrder(
+      // 1. Create Order
+      final orderResponse = await ApiService.createOrder(
         shippingAddressId: shippingAddressId,
         selectedProductIds: selectedProductIds,
         paymentMethod: paymentMethod,
         notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
       );
 
-      if (context.mounted) {
-        setState(() {
-          _isPlacingOrder = false;
-        });
+      if (orderResponse['success'] == true) {
+        final orderData = orderResponse['data'] as Map<String, dynamic>;
+        final orderId = orderData['_id'] as String? ?? orderData['id'] as String;
 
-        if (response['success'] == true) {
-          // Clear cart after successful order
-          await cartProvider.clearCart();
+        // 2. If Mobile Banking, Create Transaction
+        if (paymentMethod == 'mobile_banking' && txnId != null) {
+          try {
+            await ApiService.createTransaction(
+              orderId: orderId,
+              paymentMethodId: '6972647289a956355769f88c', // Provided paymentMethodId
+              userProvidedTransactionId: txnId,
+            );
+          } catch (e) {
+            debugPrint('Error creating transaction: $e');
+            // We continue anyway as the order was created successfully
+          }
+        }
+
+        if (context.mounted) {
+          setState(() {
+            _isPlacingOrder = false;
+          });
+
+          // Refresh cart from server after successful order
+          // The server should have cleared the cart automatically
+          try {
+            await cartProvider.fetchCart();
+          } catch (e) {
+            debugPrint('Error refreshing cart: $e');
+            // If fetching fails, manually clear the local cart state
+            await cartProvider.clearCart();
+          }
 
           if (context.mounted) {
             showDialog(
@@ -107,7 +199,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               builder: (context) => AlertDialog(
                 title: const Text('Order Placed!'),
                 content: Text(
-                  response['message'] as String? ?? 'Your order has been placed successfully.',
+                  orderResponse['message'] as String? ?? 'Your order has been placed successfully.',
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -127,12 +219,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             );
           }
-        } else {
+        }
+      } else {
+        if (context.mounted) {
+          setState(() {
+            _isPlacingOrder = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                response['message'] as String? ?? 'Failed to place order',
-              ),
+              content: Text(orderResponse['message'] as String? ?? 'Failed to place order'),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
@@ -147,9 +242,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Error placing order: ${e.toString().replaceAll('Exception: ', '')}',
-            ),
+            content: Text('Error placing order: ${e.toString().replaceAll('Exception: ', '')}'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -295,12 +388,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               ),
                             ),
                             Text(
-                              priceFormat.format(item.totalPrice),
+                              priceFormat.format(item.total),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primaryBlue,
                               ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () {
+                                cartProvider.removeFromCart(item.product.id);
+                              },
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                color: AppColors.error,
+                                size: 20,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                             ),
                           ],
                         ),

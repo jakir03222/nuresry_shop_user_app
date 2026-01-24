@@ -47,6 +47,9 @@ class ApiConstants {
     return path;
   }
 
+  // Transaction Endpoints
+  static const String transactions = '/transactions';
+
   // Wishlist Endpoints
   static const String wishlists = '/wishlists';
   static const String wishlistsMy = '/wishlists/my';

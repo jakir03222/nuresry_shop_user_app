@@ -19,7 +19,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProfile();
+      if (mounted) {
+        _loadProfile();
+      }
     });
   }
 

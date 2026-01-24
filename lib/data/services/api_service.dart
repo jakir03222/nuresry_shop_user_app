@@ -60,7 +60,11 @@ class ApiService {
           );
           break;
         case 'DELETE':
-          response = await http.delete(url, headers: headers);
+          response = await http.delete(
+            url,
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          );
           break;
         default:
           throw Exception('Unsupported HTTP method: $method');
@@ -416,6 +420,24 @@ class ApiService {
       endpoint: ApiConstants.orders,
       method: 'POST',
       body: body,
+      requireAuth: true,
+    );
+  }
+
+  // Create Transaction
+  static Future<Map<String, dynamic>> createTransaction({
+    required String orderId,
+    required String paymentMethodId,
+    required String userProvidedTransactionId,
+  }) async {
+    return await _makeRequest(
+      endpoint: ApiConstants.transactions,
+      method: 'POST',
+      body: {
+        'orderId': orderId,
+        'paymentMethodId': paymentMethodId,
+        'userProvidedTransactionId': userProvidedTransactionId,
+      },
       requireAuth: true,
     );
   }

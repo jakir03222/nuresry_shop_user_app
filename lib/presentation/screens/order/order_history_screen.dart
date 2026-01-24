@@ -18,6 +18,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
       orderProvider.loadOrders();
     });

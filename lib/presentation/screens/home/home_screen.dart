@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       productProvider.loadCarousels();

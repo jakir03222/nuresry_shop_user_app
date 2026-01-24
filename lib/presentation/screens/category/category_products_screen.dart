@@ -27,6 +27,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     super.initState();
     // Load products by category when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       productProvider.resetCategoryProducts();
       productProvider.loadProductsByCategory(widget.categoryId);

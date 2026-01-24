@@ -20,6 +20,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final addressProvider = Provider.of<AddressProvider>(context, listen: false);
       if (addressProvider.addresses.isEmpty && !addressProvider.isLoading) {
         addressProvider.loadAddresses();

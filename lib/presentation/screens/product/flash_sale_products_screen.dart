@@ -28,6 +28,7 @@ class _FlashSaleProductsScreenState extends State<FlashSaleProductsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _loadFlashSaleDetails();
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       productProvider.loadFlashSaleProducts(widget.saleId);

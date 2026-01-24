@@ -18,6 +18,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final favoriteProvider = Provider.of<FavoriteProvider>(context, listen: false);
       favoriteProvider.loadWishlist();
     });

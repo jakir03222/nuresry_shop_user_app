@@ -20,6 +20,7 @@ class _AllCarouselsScreenState extends State<AllCarouselsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       Provider.of<ProductProvider>(context, listen: false).loadCarousels();
     });
   }

@@ -29,6 +29,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       productProvider.loadProductById(widget.productId);
     });
@@ -526,75 +527,79 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                         const SizedBox(height: 24),
                         // Action Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: cartProvider.isLoading
-                                    ? null
-                                    : () async {
-                                        try {
-                                          await cartProvider.addToCart(product, quantity: _quantity);
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text('$_quantity x ${product.name} added to cart'),
-                                                backgroundColor: AppColors.success,
-                                                behavior: SnackBarBehavior.floating,
-                                              ),
-                                            );
-                                          }
-                                        } catch (e) {
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text(cartProvider.errorMessage ?? 'Failed to add to cart'),
-                                                backgroundColor: AppColors.error,
-                                                behavior: SnackBarBehavior.floating,
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  side: const BorderSide(color: AppColors.primaryBlue),
-                                ),
-                                child: const Text(
-                                  'Add to Cart',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                        Consumer<CartProvider>(
+                          builder: (context, cartProvider, child) {
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: cartProvider.isLoading
+                                        ? null
+                                        : () async {
+                                            try {
+                                              await cartProvider.addToCart(product, quantity: _quantity);
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('$_quantity x ${product.name} added to cart'),
+                                                    backgroundColor: AppColors.success,
+                                                    behavior: SnackBarBehavior.floating,
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(cartProvider.errorMessage ?? 'Failed to add to cart'),
+                                                    backgroundColor: AppColors.error,
+                                                    behavior: SnackBarBehavior.floating,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      side: const BorderSide(color: AppColors.primaryBlue),
+                                    ),
+                                    child: const Text(
+                                      'Add to Cart',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: CustomButton(
-                                text: 'Buy Now',
-                                isLoading: cartProvider.isLoading,
-                                onPressed: () async {
-                                  try {
-                                    await cartProvider.addToCart(product, quantity: _quantity);
-                                    if (context.mounted) {
-                                      context.push('/checkout');
-                                    }
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(cartProvider.errorMessage ?? 'Failed to add to cart'),
-                                          backgroundColor: AppColors.error,
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: CustomButton(
+                                    text: 'Buy Now',
+                                    isLoading: cartProvider.isLoading,
+                                    onPressed: () async {
+                                      try {
+                                        await cartProvider.addToCart(product, quantity: _quantity);
+                                        if (context.mounted) {
+                                          context.push('/checkout');
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(cartProvider.errorMessage ?? 'Failed to add to cart'),
+                                              backgroundColor: AppColors.error,
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ] else ...[
                         Container(

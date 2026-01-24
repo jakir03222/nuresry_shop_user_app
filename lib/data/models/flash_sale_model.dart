@@ -1,3 +1,4 @@
+import 'product_model.dart';
 import '../../core/interfaces/base_model.dart';
 
 class FlashSaleModel implements BaseModel {
@@ -11,6 +12,7 @@ class FlashSaleModel implements BaseModel {
   final DateTime endDate;
   final bool isActive;
   final List<String> productIds;
+  final List<ProductModel> products;
   final bool featured;
   final int order;
   final DateTime? createdAt;
@@ -27,6 +29,7 @@ class FlashSaleModel implements BaseModel {
     required this.endDate,
     required this.isActive,
     required this.productIds,
+    this.products = const [],
     required this.featured,
     required this.order,
     this.createdAt,
@@ -73,6 +76,31 @@ class FlashSaleModel implements BaseModel {
   }
 
   static FlashSaleModel fromJsonMap(Map<String, dynamic> json) {
+    final rawProductIds = json['productIds'] ?? [];
+    final List<String> idList = [];
+    final List<ProductModel> productList = [];
+    
+    final endDate = json['endDate'] != null
+        ? DateTime.parse(json['endDate'])
+        : DateTime.now();
+
+    if (rawProductIds is List) {
+      for (var item in rawProductIds) {
+        if (item is String) {
+          idList.add(item);
+        } else if (item is Map<String, dynamic>) {
+          var product = ProductModel.fromJsonMap(item);
+          // Enrich product with flash sale info
+          product = product.copyWith(
+            isFlashSale: true,
+            flashSaleEndDate: endDate,
+          );
+          productList.add(product);
+          idList.add(product.id);
+        }
+      }
+    }
+
     return FlashSaleModel(
       id: json['_id'] ?? json['id'] ?? '',
       title: json['title'] ?? '',
@@ -83,13 +111,10 @@ class FlashSaleModel implements BaseModel {
       startDate: json['startDate'] != null
           ? DateTime.parse(json['startDate'])
           : DateTime.now(),
-      endDate: json['endDate'] != null
-          ? DateTime.parse(json['endDate'])
-          : DateTime.now(),
+      endDate: endDate,
       isActive: json['isActive'] ?? true,
-      productIds: json['productIds'] != null
-          ? List<String>.from(json['productIds'])
-          : [],
+      productIds: idList,
+      products: productList,
       featured: json['featured'] ?? false,
       order: json['order'] ?? 0,
       createdAt: json['createdAt'] != null
@@ -112,6 +137,7 @@ class FlashSaleModel implements BaseModel {
     DateTime? endDate,
     bool? isActive,
     List<String>? productIds,
+    List<ProductModel>? products,
     bool? featured,
     int? order,
     DateTime? createdAt,
@@ -128,6 +154,7 @@ class FlashSaleModel implements BaseModel {
       endDate: endDate ?? this.endDate,
       isActive: isActive ?? this.isActive,
       productIds: productIds ?? this.productIds,
+      products: products ?? this.products,
       featured: featured ?? this.featured,
       order: order ?? this.order,
       createdAt: createdAt ?? this.createdAt,

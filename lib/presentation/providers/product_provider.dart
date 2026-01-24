@@ -227,21 +227,26 @@ class ProductProvider with ChangeNotifier {
         final List<dynamic> flashSaleData = response['data'] as List<dynamic>;
         _flashSales = flashSaleData
             .map((json) => FlashSaleModel.fromJsonMap(json as Map<String, dynamic>))
-            .where((flashSale) => flashSale.isActive && flashSale.isCurrentlyActive)
+            .where((flashSale) => flashSale.isActive) // Server side already filtered for active but we keep it safe
             .toList();
         
         // Sort by order
         _flashSales.sort((a, b) => a.order.compareTo(b.order));
 
-        // Load products for the first active flash sale if any
+        // Use products from the first flash sale if available in the response
         if (_flashSales.isNotEmpty) {
-          final firstSaleId = _flashSales.first.id;
-          final productsResponse = await ApiService.getProductsByFlashSale(firstSaleId);
-          if (productsResponse['success'] == true && productsResponse['data'] != null) {
-            final List<dynamic> productData = productsResponse['data'] as List<dynamic>;
-            _flashSaleProducts = productData
-                .map((json) => ProductModel.fromJsonMap(json as Map<String, dynamic>))
-                .toList();
+          final firstSale = _flashSales.first;
+          if (firstSale.products.isNotEmpty) {
+            _flashSaleProducts = firstSale.products;
+          } else {
+            // Fallback: if products were not nested, fetch them separately
+            final productsResponse = await ApiService.getProductsByFlashSale(firstSale.id);
+            if (productsResponse['success'] == true && productsResponse['data'] != null) {
+              final List<dynamic> productData = productsResponse['data'] as List<dynamic>;
+              _flashSaleProducts = productData
+                  .map((json) => ProductModel.fromJsonMap(json as Map<String, dynamic>))
+                  .toList();
+            }
           }
         }
       } else {
