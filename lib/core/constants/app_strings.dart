@@ -20,6 +20,8 @@ class AppStrings {
   static const String continueText = 'Continue';
   
   // Home Screen
+  static const String carousels = 'Carousels';
+  static const String getAllCarousels = 'Get All Carousels';
   static const String categories = 'Categories';
   static const String viewAllCategories = 'View All Categories';
   static const String flashSale = 'Flash Sale';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_constants.dart';
@@ -56,19 +57,25 @@ class FlashSaleDetailScreen extends StatelessWidget {
                     // Product Image
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        product.imageUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: product.imageUrl,
                         width: 100,
                         height: 100,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 100,
-                            height: 100,
-                            color: AppColors.borderGrey,
-                            child: const Icon(Icons.image, color: AppColors.textGrey),
-                          );
-                        },
+                        placeholder: (context, url) => Container(
+                          width: 100,
+                          height: 100,
+                          color: AppColors.borderGrey,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          width: 100,
+                          height: 100,
+                          color: AppColors.borderGrey,
+                          child: const Icon(Icons.image_not_supported_outlined, color: AppColors.textGrey),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),

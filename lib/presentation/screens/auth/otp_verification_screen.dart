@@ -38,7 +38,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.verifyEmail(
-        token: _otpController.text.trim(),
+        otp: _otpController.text.trim(),
         email: widget.email,
       );
 
@@ -52,8 +52,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             SnackBar(
               content: Text(authProvider.successMessage ?? 'Email verified successfully'),
               backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
             ),
           );
+          // Navigate to login screen after successful verification
           context.go('/get-started');
         }
       } else {
@@ -62,6 +65,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             SnackBar(
               content: Text(authProvider.errorMessage ?? 'OTP verification failed'),
               backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
@@ -103,8 +107,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter OTP';
                           }
-                          if (value.length != 6) {
-                            return 'OTP must be 6 digits';
+                          if (value.length < 4 || value.length > 6) {
+                            return 'OTP must be 4-6 digits';
                           }
                           return null;
                         },

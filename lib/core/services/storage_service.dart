@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
@@ -6,6 +7,7 @@ class StorageService {
   static const String _keyUserEmail = 'user_email';
   static const String _keyUserRole = 'user_role';
   static const String _keyUserStatus = 'user_status';
+  static const String _keyCartData = 'cart_data';
 
   // Save Access Token
   static Future<void> saveAccessToken(String token) async {
@@ -67,6 +69,32 @@ class StorageService {
     return prefs.getString(_keyUserStatus);
   }
 
+  // Save Cart Data
+  static Future<void> saveCartData(Map<String, dynamic> cartData) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCartData, jsonEncode(cartData));
+  }
+
+  // Get Cart Data
+  static Future<Map<String, dynamic>?> getCartData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cartJson = prefs.getString(_keyCartData);
+    if (cartJson != null) {
+      try {
+        return jsonDecode(cartJson) as Map<String, dynamic>;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Clear Cart Data
+  static Future<void> clearCartData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyCartData);
+  }
+
   // Clear All Data
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
@@ -75,5 +103,6 @@ class StorageService {
     await prefs.remove(_keyUserEmail);
     await prefs.remove(_keyUserRole);
     await prefs.remove(_keyUserStatus);
+    await prefs.remove(_keyCartData);
   }
 }

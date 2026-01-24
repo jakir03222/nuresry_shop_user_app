@@ -12,6 +12,16 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textWhite),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: const Text(
           'Settings',
           style: TextStyle(
@@ -44,92 +54,11 @@ class SettingsScreen extends StatelessWidget {
             title: 'Change Password',
             subtitle: 'Update your password',
             onTap: () {
-              // Navigate to change password screen
+              context.push('/change-password');
             },
           ),
           const SizedBox(height: 24),
-          // App Settings
-          _buildSectionTitle('App Settings'),
-          const SizedBox(height: 12),
-          _buildSettingsTile(
-            context,
-            icon: Icons.notifications,
-            title: 'Notifications',
-            subtitle: 'Manage notification preferences',
-            trailing: Switch(
-              value: true,
-              onChanged: (value) {},
-              activeThumbColor: AppColors.primaryBlue,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildSettingsTile(
-            context,
-            icon: Icons.dark_mode,
-            title: 'Dark Mode',
-            subtitle: 'Switch to dark theme',
-            trailing: Switch(
-              value: false,
-              onChanged: (value) {},
-              activeThumbColor: AppColors.primaryBlue,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildSettingsTile(
-            context,
-            icon: Icons.language,
-            title: 'Language',
-            subtitle: 'English',
-            onTap: () {
-              // Navigate to language selection
-            },
-          ),
-          const SizedBox(height: 24),
-          // Support
-          _buildSectionTitle('Support'),
-          const SizedBox(height: 12),
-          _buildSettingsTile(
-            context,
-            icon: Icons.help,
-            title: 'Help & FAQ',
-            subtitle: 'Get help and answers',
-            onTap: () {
-              // Navigate to help screen
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildSettingsTile(
-            context,
-            icon: Icons.info,
-            title: 'About',
-            subtitle: 'App version and information',
-            onTap: () {
-              _showAboutDialog(context);
-            },
-          ),
-          const SizedBox(height: 24),
-          // Legal
-          _buildSectionTitle('Legal'),
-          const SizedBox(height: 12),
-          _buildSettingsTile(
-            context,
-            icon: Icons.description,
-            title: 'Terms & Conditions',
-            subtitle: 'Read our terms and conditions',
-            onTap: () {
-              // Navigate to terms screen
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildSettingsTile(
-            context,
-            icon: Icons.privacy_tip,
-            title: 'Privacy Policy',
-            subtitle: 'Read our privacy policy',
-            onTap: () {
-              // Navigate to privacy policy screen
-            },
-          ),
+        
         ],
       ),
     );
@@ -214,35 +143,6 @@ class SettingsScreen extends StatelessWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('About'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Nursery Shop BD'),
-            SizedBox(height: 8),
-            Text('Version: 1.0.0'),
-            SizedBox(height: 8),
-            Text('A modern nursery shop application for buying plants and gardening supplies.'),
-          ],
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
       ),
     );
   }

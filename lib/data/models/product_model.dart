@@ -14,6 +14,12 @@ class ProductModel implements BaseModel {
   final DateTime? flashSaleEndDate;
   final double? rating;
   final int? reviewCount;
+  final String? sku;
+  final String? brand;
+  final List<String>? tags;
+  final List<String>? images;
+  final bool isAvailable;
+  final bool isFeatured;
 
   ProductModel({
     required this.id,
@@ -29,6 +35,12 @@ class ProductModel implements BaseModel {
     this.flashSaleEndDate,
     this.rating,
     this.reviewCount,
+    this.sku,
+    this.brand,
+    this.tags,
+    this.images,
+    this.isAvailable = true,
+    this.isFeatured = false,
   });
 
   double get finalPrice => discountPrice ?? unitPrice;
@@ -62,24 +74,61 @@ class ProductModel implements BaseModel {
   }
 
   static ProductModel fromJsonMap(Map<String, dynamic> json) {
+    final price = (json['price'] ?? json['unitPrice'] ?? 0).toDouble();
+    final discount = (json['discount'] ?? 0).toDouble();
+    final discountType = json['discountType'] ?? 'percentage';
+    
+    double? discountPrice;
+    if (json['discountPrice'] != null) {
+      discountPrice = (json['discountPrice'] as num).toDouble();
+    } else if (discount > 0) {
+      if (discountType == 'fixed') {
+        discountPrice = price - discount;
+      } else {
+        discountPrice = price * (1 - discount / 100);
+      }
+    }
+    
+    // Handle tags - can be array or comma-separated string
+    List<String>? tagsList;
+    if (json['tags'] != null) {
+      if (json['tags'] is List) {
+        tagsList = (json['tags'] as List).map((e) => e.toString()).toList();
+      } else if (json['tags'] is String) {
+        tagsList = (json['tags'] as String).split(',').map((e) => e.trim()).toList();
+      }
+    }
+    
+    // Handle images array
+    List<String>? imagesList;
+    if (json['images'] != null && json['images'] is List) {
+      imagesList = (json['images'] as List).map((e) => e.toString()).toList();
+    }
+    
     return ProductModel(
       id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       imageUrl: json['image'] ?? json['imageUrl'] ?? '',
-      unitPrice: (json['unitPrice'] ?? json['price'] ?? 0).toDouble(),
-      discountPrice: json['discountPrice'] != null
-          ? (json['discountPrice'] as num).toDouble()
-          : null,
-      availableQuantity: json['availableQuantity'] ?? json['stock'] ?? 0,
+      unitPrice: price,
+      discountPrice: discountPrice,
+      availableQuantity: json['quantity'] ?? json['availableQuantity'] ?? json['stock'] ?? 0,
       deliveryCharge: (json['deliveryCharge'] ?? 0).toDouble(),
       categoryId: json['categoryId'] ?? json['category'] ?? '',
       isFlashSale: json['isFlashSale'] ?? false,
       flashSaleEndDate: json['flashSaleEndDate'] != null
           ? DateTime.parse(json['flashSaleEndDate'])
           : null,
-      rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
-      reviewCount: json['reviewCount'],
+      rating: json['ratingAverage'] != null 
+          ? (json['ratingAverage'] as num).toDouble() 
+          : (json['rating'] != null ? (json['rating'] as num).toDouble() : null),
+      reviewCount: json['ratingCount'] ?? json['reviewCount'],
+      sku: json['sku'],
+      brand: json['brand'],
+      tags: tagsList,
+      images: imagesList,
+      isAvailable: json['isAvailable'] ?? true,
+      isFeatured: json['isFeatured'] ?? false,
     );
   }
 
@@ -97,6 +146,12 @@ class ProductModel implements BaseModel {
     DateTime? flashSaleEndDate,
     double? rating,
     int? reviewCount,
+    String? sku,
+    String? brand,
+    List<String>? tags,
+    List<String>? images,
+    bool? isAvailable,
+    bool? isFeatured,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -112,6 +167,12 @@ class ProductModel implements BaseModel {
       flashSaleEndDate: flashSaleEndDate ?? this.flashSaleEndDate,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
+      sku: sku ?? this.sku,
+      brand: brand ?? this.brand,
+      tags: tags ?? this.tags,
+      images: images ?? this.images,
+      isAvailable: isAvailable ?? this.isAvailable,
+      isFeatured: isFeatured ?? this.isFeatured,
     );
   }
 }

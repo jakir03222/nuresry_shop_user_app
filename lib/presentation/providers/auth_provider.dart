@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/api_service.dart';
@@ -120,7 +121,9 @@ class AuthProvider with ChangeNotifier {
   Future<bool> signUp({
     required String name,
     required String email,
+    required String phone,
     required String password,
+    File? profileImage,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -131,7 +134,9 @@ class AuthProvider with ChangeNotifier {
       final response = await ApiService.signUp(
         name: name,
         email: email,
+        phone: phone,
         password: password,
+        profileImage: profileImage,
       );
 
       if (response['success'] == true) {
@@ -154,7 +159,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> verifyEmail({
-    required String token,
+    required String otp,
     required String email,
   }) async {
     _isLoading = true;
@@ -164,7 +169,7 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final response = await ApiService.verifyEmail(
-        token: token,
+        otp: otp,
         email: email,
       );
 
@@ -224,5 +229,76 @@ class AuthProvider with ChangeNotifier {
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
+  }
+
+  // Load user profile from API
+  Future<void> loadProfile() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.getProfile();
+
+      if (response['success'] == true && response['data'] != null) {
+        final userData = response['data'] as Map<String, dynamic>;
+        _user = UserModel.fromJsonMap(userData);
+        _isLoading = false;
+        notifyListeners();
+      } else {
+        _errorMessage = response['message'] as String? ?? 'Failed to load profile';
+        debugPrint('[loadProfile] API error: success=false, message=$_errorMessage');
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e, stackTrace) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      debugPrint('[loadProfile] Exception: $e');
+      debugPrint('[loadProfile] stackTrace: $stackTrace');
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Update user profile
+  Future<bool> updateProfile({
+    String? name,
+    String? email,
+    String? mobile,
+    File? profilePicture,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.updateProfile(
+        name: name,
+        email: email,
+        mobile: mobile,
+        profilePicture: profilePicture,
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final userData = response['data'] as Map<String, dynamic>;
+        _user = UserModel.fromJsonMap(userData);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = response['message'] as String? ?? 'Failed to update profile';
+        debugPrint('[updateProfile] API error: success=false, message=$_errorMessage');
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e, stackTrace) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      debugPrint('[updateProfile] Exception: $e');
+      debugPrint('[updateProfile] stackTrace: $stackTrace');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 }

@@ -69,7 +69,7 @@ class UserModel implements BaseModel {
           ? DateTime.parse(json['updatedAt'])
           : null,
       mobile: json['mobile'],
-      profileImage: json['profileImage'],
+      profileImage: json['profilePicture'] ?? json['profileImage'],
     );
   }
 

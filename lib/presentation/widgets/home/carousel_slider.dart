@@ -30,6 +30,19 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
   }
 
   @override
+  void didUpdateWidget(covariant CarouselSliderWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.carousels.isEmpty) {
+      _timer?.cancel();
+      _timer = null;
+    } else if (oldWidget.carousels.isEmpty || oldWidget.carousels.length != widget.carousels.length) {
+      _timer?.cancel();
+      _currentPage = 0;
+      _startAutoPlay();
+    }
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     _pageController.dispose();
@@ -37,19 +50,17 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
   }
 
   void _startAutoPlay() {
+    _timer?.cancel();
+    if (widget.carousels.isEmpty) return;
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (_pageController.hasClients) {
-        if (_currentPage < widget.carousels.length - 1) {
-          _currentPage++;
-        } else {
-          _currentPage = 0;
-        }
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
+      if (!_pageController.hasClients) return;
+      final next = _currentPage < widget.carousels.length - 1 ? _currentPage + 1 : 0;
+      _currentPage = next;
+      _pageController.animateToPage(
+        _currentPage,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     });
   }
 
@@ -79,7 +90,7 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Color.lerp(Colors.black, Colors.transparent, 0.9)!,
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -93,13 +104,12 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
                       CachedNetworkImage(
                         imageUrl: carousel.image,
                         fit: BoxFit.cover,
-                        progressIndicatorBuilder: (context, url, downloadProgress) => Container(
+                        placeholder: (context, url) => Container(
                           width: double.infinity,
                           height: double.infinity,
                           color: AppColors.borderGrey,
-                          child: Center(
+                          child: const Center(
                             child: CircularProgressIndicator(
-                              value: downloadProgress.progress,
                               color: AppColors.primaryBlue,
                               strokeWidth: 3,
                             ),
@@ -139,7 +149,7 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.5),
+                              Color.lerp(Colors.black, Colors.transparent, 0.5)!,
                             ],
                           ),
                         ),
@@ -202,7 +212,7 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
                 shape: BoxShape.circle,
                 color: _currentPage == index
                     ? AppColors.primaryBlue
-                    : AppColors.textSecondary.withOpacity(0.3),
+                    : Color.lerp(AppColors.textSecondary, Colors.transparent, 0.7)!,
               ),
             ),
           ),

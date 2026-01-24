@@ -49,12 +49,138 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
+  ProductModel? _currentProduct;
+  ProductModel? get currentProduct => _currentProduct;
+
   ProductModel? getProductById(String id) {
     try {
       return _products.firstWhere((p) => p.id == id);
     } catch (e) {
       return null;
     }
+  }
+
+  Future<void> loadProductById(String productId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _currentProduct = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.getProductById(productId);
+
+      if (response['success'] == true && response['data'] != null) {
+        final productData = response['data'] as Map<String, dynamic>;
+        _currentProduct = ProductModel.fromJsonMap(productData);
+      } else {
+        _errorMessage = response['message'] as String? ?? 'Failed to load product';
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _currentProduct = null;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  List<ProductModel> _categoryProducts = [];
+  List<ProductModel> get categoryProducts => _categoryProducts;
+  
+  // Pagination metadata
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _totalDocuments = 0;
+  int _limitPerPage = 10;
+  bool _hasMoreProducts = false;
+  bool _isLoadingMore = false;
+  
+  int get currentPage => _currentPage;
+  int get totalPages => _totalPages;
+  int get totalDocuments => _totalDocuments;
+  int get limitPerPage => _limitPerPage;
+  bool get hasMoreProducts => _hasMoreProducts;
+  bool get isLoadingMore => _isLoadingMore;
+
+  Future<void> loadProductsByCategory(String categoryId, {bool loadMore = false}) async {
+    if (loadMore && !_hasMoreProducts) {
+      return; // No more products to load
+    }
+    
+    final pageToLoad = loadMore ? _currentPage + 1 : 1;
+    
+    if (loadMore) {
+      _isLoadingMore = true;
+    } else {
+      _isLoading = true;
+      _errorMessage = null;
+    }
+    notifyListeners();
+
+    try {
+      final response = await ApiService.getProductsByCategory(
+        categoryId,
+        page: pageToLoad,
+        limit: 10,
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> productData = response['data'] as List<dynamic>;
+        final newProducts = productData
+            .map((json) => ProductModel.fromJsonMap(json as Map<String, dynamic>))
+            .toList();
+        
+        if (loadMore) {
+          _categoryProducts.addAll(newProducts);
+          _currentPage = pageToLoad;
+        } else {
+          _categoryProducts = newProducts;
+          _currentPage = 1;
+        }
+        
+        // Update pagination metadata
+        if (response['meta'] != null) {
+          final meta = response['meta'] as Map<String, dynamic>;
+          _totalDocuments = meta['totalDocuments'] ?? 0;
+          _totalPages = meta['totalPages'] ?? 1;
+          _limitPerPage = meta['limitPerPage'] ?? 10;
+          _hasMoreProducts = _currentPage < _totalPages;
+        }
+      } else {
+        _errorMessage = response['message'] as String? ?? 'Failed to load products';
+        if (!loadMore) {
+          _categoryProducts = [];
+        }
+      }
+
+      if (loadMore) {
+        _isLoadingMore = false;
+      } else {
+        _isLoading = false;
+      }
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      if (!loadMore) {
+        _categoryProducts = [];
+        _isLoading = false;
+      } else {
+        _isLoadingMore = false;
+      }
+      notifyListeners();
+    }
+  }
+  
+  void resetCategoryProducts() {
+    _categoryProducts = [];
+    _currentPage = 1;
+    _totalPages = 1;
+    _totalDocuments = 0;
+    _hasMoreProducts = false;
+    _isLoadingMore = false;
+    notifyListeners();
   }
 
   List<ProductModel> getProductsByCategory(String categoryId) {
@@ -106,6 +232,18 @@ class ProductProvider with ChangeNotifier {
         
         // Sort by order
         _flashSales.sort((a, b) => a.order.compareTo(b.order));
+
+        // Load products for the first active flash sale if any
+        if (_flashSales.isNotEmpty) {
+          final firstSaleId = _flashSales.first.id;
+          final productsResponse = await ApiService.getProductsByFlashSale(firstSaleId);
+          if (productsResponse['success'] == true && productsResponse['data'] != null) {
+            final List<dynamic> productData = productsResponse['data'] as List<dynamic>;
+            _flashSaleProducts = productData
+                .map((json) => ProductModel.fromJsonMap(json as Map<String, dynamic>))
+                .toList();
+          }
+        }
       } else {
         _errorMessage = response['message'] as String? ?? 'Failed to load flash sales';
       }

@@ -5,6 +5,10 @@ import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/product_provider.dart';
 import 'presentation/providers/cart_provider.dart';
 import 'presentation/providers/favorite_provider.dart';
+import 'presentation/providers/address_provider.dart';
+import 'presentation/providers/order_provider.dart';
+import 'presentation/providers/contact_provider.dart';
+import 'presentation/providers/coupon_provider.dart';
 import 'presentation/routes/app_router.dart';
 
 void main() async {
@@ -28,8 +32,18 @@ class MyApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
-        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final cartProvider = CartProvider();
+            cartProvider.loadCartFromCache(); // Preload from cache for instant display
+            return cartProvider;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => FavoriteProvider()),
+        ChangeNotifierProvider(create: (_) => AddressProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => ContactProvider()),
+        ChangeNotifierProvider(create: (_) => CouponProvider()),
       ],
       child: MaterialApp.router(
         title: 'Nursery Shop BD',

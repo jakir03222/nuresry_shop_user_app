@@ -3,11 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../data/models/category_model.dart';
 import '../../widgets/home/category_card.dart';
 import '../../widgets/home/flash_sale_promotion_card.dart';
+import '../../widgets/home/flash_sale_card.dart';
 import '../../widgets/home/carousel_slider.dart';
-import '../../widgets/common/custom_drawer.dart';
 import '../../widgets/common/shimmer_loader.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/cart_provider.dart';
@@ -27,18 +26,14 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
       productProvider.loadCarousels();
       productProvider.loadCategories();
       productProvider.loadFlashSales();
+      // Load cart from cache first, then sync with API
+      cartProvider.loadCart(useCache: true);
     });
   }
-
-  // Get categories from provider
-  List<CategoryModel> get _categories {
-    final productProvider = Provider.of<ProductProvider>(context);
-    return productProvider.categories;
-  }
-
 
   @override
   Widget build(BuildContext context) {
@@ -48,20 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
     
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-      drawer: const CustomDrawer(),
       appBar: AppBar(
         backgroundColor: AppColors.backgroundGrey,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(
-              Icons.menu,
-              color: AppColors.textPrimary,
-              size: isTablet ? 28 : 24,
-            ),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
         title: Text(
           AppStrings.appName,
           style: TextStyle(
@@ -82,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Consumer<CartProvider>(
             builder: (context, cartProvider, child) {
-              final itemCount = cartProvider.itemCount;
+              final totalQuantity = cartProvider.totalQuantity;
               return Stack(
                 children: [
                   IconButton(
@@ -95,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       context.push('/cart');
                     },
                   ),
-                  if (itemCount > 0)
+                  if (totalQuantity > 0)
                     Positioned(
                       right: isTablet ? 10 : 8,
                       top: isTablet ? 10 : 8,
@@ -110,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           minHeight: isTablet ? 20 : 16,
                         ),
                         child: Text(
-                          itemCount > 9 ? '9+' : '$itemCount',
+                          totalQuantity > 9 ? '9+' : '$totalQuantity',
                           style: TextStyle(
                             color: AppColors.textWhite,
                             fontSize: isTablet ? 12 : 10,
@@ -131,6 +115,35 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 16),
+            // Carousels Section Header
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    AppStrings.carousels,
+                    style: TextStyle(
+                      fontSize: isTablet ? 22 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.push('/all-carousels'),
+                    child: Text(
+                      AppStrings.getAllCarousels,
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: isTablet ? 16 : 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             // Carousel Slider
             Consumer<ProductProvider>(
               builder: (context, productProvider, child) {
@@ -205,18 +218,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   );
                 }
+                final categories = productProvider.categories;
                 return SizedBox(
                   height: categoryHeight,
                   width: double.infinity,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-                    itemCount: _categories.length,
+                    itemCount: categories.length,
                     itemBuilder: (context, index) {
+                      final category = categories[index];
+                      final categoryId = category.id;
                       return CategoryCard(
-                        category: _categories[index],
+                        category: category,
                         onTap: () {
-                          context.push('/category-products/${_categories[index].id}');
+                          context.push('/category-products/$categoryId');
                         },
                       );
                     },
@@ -284,6 +300,67 @@ class _HomeScreenState extends State<HomeScreen> {
                         flashSale: flashSale,
                         onTap: () {
                           context.push('/flash-sale-products/${flashSale.id}');
+                        },
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+            ),
+            // Flash Sale Products Header
+            Consumer<ProductProvider>(
+              builder: (context, productProvider, child) {
+                if (productProvider.flashSaleProducts.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Flash Sale Products',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (productProvider.flashSales.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            context.push('/flash-sale-products/${productProvider.flashSales.first.id}');
+                          },
+                          child: const Text(
+                            'View All',
+                            style: TextStyle(
+                              color: AppColors.primaryBlue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            // Flash Sale Products List
+            Consumer<ProductProvider>(
+              builder: (context, productProvider, child) {
+                if (productProvider.flashSaleProducts.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                  child: Column(
+                    children: productProvider.flashSaleProducts.map((product) {
+                      return FlashSaleCard(
+                        product: product,
+                        onTap: () {
+                          context.push('/product-detail/${product.id}');
+                        },
+                        onFlashSaleTap: () {
+                          context.push('/flash-sale-products/${productProvider.flashSales.first.id}');
                         },
                       );
                     }).toList(),

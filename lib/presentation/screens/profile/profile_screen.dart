@@ -1,22 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user;
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
 
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoadingProfile = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfile();
+    });
+  }
+
+  Future<void> _loadProfile() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
+
+    setState(() => _isLoadingProfile = true);
+    try {
+      await authProvider.loadProfile();
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingProfile = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textWhite),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: const Text(
           'Profile',
           style: TextStyle(
@@ -27,130 +61,271 @@ class ProfileScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Profile Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryBlue,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
+      body: _isLoadingProfile
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadProfile,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Consumer<AuthProvider>(
+                  builder: (context, authProvider, _) {
+                    final user = authProvider.user;
+                    
+                    // Show error if profile failed to load
+                    if (authProvider.errorMessage != null && user == null) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 64,
+                                color: AppColors.error,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Failed to load profile',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                authProvider.errorMessage ?? 'Unknown error',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: _loadProfile,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryBlue,
+                                ),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    
+                    return Column(
+                      children: [
+                        // Profile Header (API data)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primaryBlue,
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(30),
+                              bottomRight: Radius.circular(30),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              // Profile Picture
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.backgroundWhite,
+                                  border: Border.all(
+                                    color: AppColors.textWhite,
+                                    width: 4,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: user?.profileImage != null &&
+                                          user!.profileImage!.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: user.profileImage!,
+                                          fit: BoxFit.cover,
+                                          width: 100,
+                                          height: 100,
+                                          placeholder: (context, url) => Container(
+                                            width: 100,
+                                            height: 100,
+                                            color: AppColors.backgroundWhite,
+                                            child: const Center(
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor: AlwaysStoppedAnimation<Color>(
+                                                  AppColors.primaryBlue,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) => Container(
+                                            width: 100,
+                                            height: 100,
+                                            color: AppColors.backgroundWhite,
+                                            child: const Icon(
+                                              Icons.person,
+                                              size: 50,
+                                              color: AppColors.primaryBlue,
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 100,
+                                          height: 100,
+                                          color: AppColors.backgroundWhite,
+                                          child: const Icon(
+                                            Icons.person,
+                                            size: 50,
+                                            color: AppColors.primaryBlue,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // Name
+                              Text(
+                                user?.name ?? 'Guest User',
+                                style: const TextStyle(
+                                  color: AppColors.textWhite,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              // Email
+                              Text(
+                                user?.email ?? 'guest@example.com',
+                                style: const TextStyle(
+                                  color: AppColors.textWhite,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              // Mobile (if available)
+                              if (user?.mobile != null &&
+                                  user!.mobile!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  user.mobile!,
+                                  style: const TextStyle(
+                                    color: AppColors.textWhite,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                              // Role and Status badges
+                              if (user != null) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Color.lerp(
+                                          AppColors.textWhite,
+                                          Colors.transparent,
+                                          0.8,
+                                        )!,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        user.role.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: AppColors.textWhite,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Color.lerp(
+                                          user.status == 'active'
+                                              ? AppColors.success
+                                              : AppColors.error,
+                                          Colors.transparent,
+                                          0.8,
+                                        )!,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        user.status.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: AppColors.textWhite,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              _buildProfileOption(
+                                context,
+                                icon: Icons.edit,
+                                title: 'Edit Profile',
+                                onTap: () => context.push('/edit-profile'),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildProfileOption(
+                                context,
+                                icon: Icons.settings,
+                                title: 'Settings',
+                                onTap: () => context.push('/settings'),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildProfileOption(
+                                context,
+                                icon: Icons.confirmation_number_outlined,
+                                title: 'My Coupons',
+                                onTap: () => context.push('/coupons'),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildProfileOption(
+                                context,
+                                icon: Icons.contact_support,
+                                title: 'Contact Us',
+                                onTap: () => context.push('/contact-us'),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildProfileOption(
+                                context,
+                                icon: Icons.logout,
+                                title: 'Logout',
+                                onTap: () => _showLogoutDialog(context),
+                                isDestructive: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
-              child: Column(
-                children: [
-                  // Profile Image
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.backgroundWhite,
-                      border: Border.all(
-                        color: AppColors.textWhite,
-                        width: 4,
-                      ),
-                    ),
-                    child: user?.profileImage != null
-                        ? ClipOval(
-                            child: Image.network(
-                              user!.profileImage!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.person,
-                                  size: 50,
-                                  color: AppColors.primaryBlue,
-                                );
-                              },
-                            ),
-                          )
-                        : const Icon(
-                            Icons.person,
-                            size: 50,
-                            color: AppColors.primaryBlue,
-                          ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    user?.fullName ?? 'Guest User',
-                    style: const TextStyle(
-                      color: AppColors.textWhite,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    user?.email ?? 'guest@example.com',
-                    style: const TextStyle(
-                      color: AppColors.textWhite,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    user?.mobile ?? 'N/A',
-                    style: const TextStyle(
-                      color: AppColors.textWhite,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
             ),
-            const SizedBox(height: 24),
-            // Profile Options
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  _buildProfileOption(
-                    context,
-                    icon: Icons.edit,
-                    title: 'Edit Profile',
-                    onTap: () {
-                      context.push('/edit-profile');
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildProfileOption(
-                    context,
-                    icon: Icons.settings,
-                    title: 'Settings',
-                    onTap: () {
-                      context.push('/settings');
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildProfileOption(
-                    context,
-                    icon: Icons.contact_support,
-                    title: 'Contact Us',
-                    onTap: () {
-                      context.push('/contact-us');
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildProfileOption(
-                    context,
-                    icon: Icons.logout,
-                    title: 'Logout',
-                    onTap: () {
-                      _showLogoutDialog(context);
-                    },
-                    isDestructive: true,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

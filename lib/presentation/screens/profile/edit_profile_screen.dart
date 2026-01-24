@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
@@ -19,17 +22,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _mobileController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
+  File? _selectedImage;
   bool _isLoading = false;
+  bool _isLoadingProfile = false;
 
   @override
   void initState() {
     super.initState();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.user;
-    if (user != null) {
-      _fullNameController.text = user.fullName;
-      _emailController.text = user.email;
-      _mobileController.text = user.mobile ?? '';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfile();
+    });
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _isLoadingProfile = true;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.loadProfile();
+      
+      final user = authProvider.user;
+      if (user != null && mounted) {
+        _fullNameController.text = user.name;
+        _emailController.text = user.email;
+        _mobileController.text = user.mobile ?? '';
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[EditProfile] loadProfile error: $e');
+      debugPrint('[EditProfile] loadProfile stackTrace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading profile: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
+
+      if (image != null && mounted) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -51,28 +111,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
 
     try {
-      // In a real app, you would call an API to update the profile
-      await Future.delayed(const Duration(seconds: 1));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // Update user in provider (mock update)
-      // In a real app, you would update the user here
-      // final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      // final updatedUser = authProvider.user?.copyWith(
-      //   fullName: _fullNameController.text.trim(),
-      //   email: _emailController.text.trim(),
-      //   mobile: _mobileController.text.trim(),
-      // );
+      final success = await authProvider.updateProfile(
+        name: _fullNameController.text.trim(),
+        email: _emailController.text.trim(),
+        mobile: _mobileController.text.trim(),
+        profilePicture: _selectedImage,
+      );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        context.pop();
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          context.pop();
+        } else {
+          debugPrint('[EditProfile] updateProfile API error: ${authProvider.errorMessage}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authProvider.errorMessage ?? 'Failed to update profile'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[EditProfile] updateProfile error: $e');
+      debugPrint('[EditProfile] updateProfile stackTrace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -107,54 +176,92 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 24),
-              // Profile Image Section
-              Center(
-                child: Stack(
+      body: _isLoadingProfile
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.borderGrey,
-                        border: Border.all(
-                          color: AppColors.primaryBlue,
-                          width: 3,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: AppColors.primaryBlue,
+                    const SizedBox(height: 24),
+                    // Profile Image Section
+                    Center(
+                      child: Consumer<AuthProvider>(
+                        builder: (context, authProvider, _) {
+                          final user = authProvider.user;
+                          final profileImageUrl = user?.profileImage;
+                          
+                          return GestureDetector(
+                            onTap: _pickImage,
+                            child: Stack(
+                              children: [
+                                Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.borderGrey,
+                                    border: Border.all(
+                                      color: AppColors.primaryBlue,
+                                      width: 3,
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: _selectedImage != null
+                                        ? Image.file(
+                                            _selectedImage!,
+                                            fit: BoxFit.cover,
+                                            width: 120,
+                                            height: 120,
+                                          )
+                                        : profileImageUrl != null && profileImageUrl.isNotEmpty
+                                            ? CachedNetworkImage(
+                                                imageUrl: profileImageUrl,
+                                                fit: BoxFit.cover,
+                                                width: 120,
+                                                height: 120,
+                                                placeholder: (context, url) => const Center(
+                                                  child: CircularProgressIndicator(),
+                                                ),
+                                                errorWidget: (context, url, error) => const Icon(
+                                                  Icons.person,
+                                                  size: 60,
+                                                  color: AppColors.primaryBlue,
+                                                ),
+                                              )
+                                            : const Icon(
+                                                Icons.person,
+                                                size: 60,
+                                                color: AppColors.primaryBlue,
+                                              ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primaryBlue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      color: AppColors.textWhite,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryBlue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: AppColors.textWhite,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 32),
               CustomTextField(
                 controller: _fullNameController,

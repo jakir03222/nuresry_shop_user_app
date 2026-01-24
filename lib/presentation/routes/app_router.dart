@@ -6,6 +6,7 @@ import '../screens/auth/create_account_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/otp_verification_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/home/all_carousels_screen.dart';
 import '../screens/product/flash_sale_detail_screen.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../screens/product/all_flash_sales_screen.dart';
@@ -15,9 +16,14 @@ import '../screens/category/category_products_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/settings/change_password_screen.dart';
+import '../screens/profile/coupons_screen.dart';
 import '../screens/contact/contact_us_screen.dart';
 import '../screens/cart/cart_screen.dart';
 import '../screens/cart/checkout_screen.dart';
+import '../screens/address/shipping_address_screen.dart';
+import '../screens/order/order_history_screen.dart';
+import '../screens/wishlist/wishlist_screen.dart';
 import '../providers/product_provider.dart';
 import '../../core/services/storage_service.dart';
 
@@ -42,7 +48,7 @@ class AppRouter {
 
         // Allow access to home and public pages even if not authenticated
         // Only redirect to login for protected pages (profile, settings, etc.)
-        final protectedPages = ['/profile', '/edit-profile', '/settings', '/cart', '/checkout'];
+        final protectedPages = ['/profile', '/edit-profile', '/settings', '/change-password', '/coupons', '/cart', '/checkout', '/shipping-address', '/order-history', '/wishlist', '/contact-us'];
         if (!isAuthenticated && protectedPages.contains(state.uri.path)) {
           return '/get-started';
         }
@@ -95,6 +101,16 @@ class AppRouter {
         builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
+        path: '/change-password',
+        name: 'change-password',
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: '/coupons',
+        name: 'coupons',
+        builder: (context, state) => const CouponsScreen(),
+      ),
+      GoRoute(
         path: '/contact-us',
         name: 'contact-us',
         builder: (context, state) => const ContactUsScreen(),
@@ -108,6 +124,26 @@ class AppRouter {
         path: '/checkout',
         name: 'checkout',
         builder: (context, state) => const CheckoutScreen(),
+      ),
+      GoRoute(
+        path: '/shipping-address',
+        name: 'shipping-address',
+        builder: (context, state) => const ShippingAddressScreen(),
+      ),
+      GoRoute(
+        path: '/order-history',
+        name: 'order-history',
+        builder: (context, state) => const OrderHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/wishlist',
+        name: 'wishlist',
+        builder: (context, state) => const WishlistScreen(),
+      ),
+      GoRoute(
+        path: '/all-carousels',
+        name: 'all-carousels',
+        builder: (context, state) => const AllCarouselsScreen(),
       ),
       GoRoute(
         path: '/all-categories',
@@ -140,18 +176,7 @@ class AppRouter {
         name: 'product-detail',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return Builder(
-            builder: (context) {
-              final productProvider = Provider.of<ProductProvider>(context, listen: false);
-              final product = productProvider.getProductById(id);
-              if (product == null) {
-                return const Scaffold(
-                  body: Center(child: Text('Product not found')),
-                );
-              }
-              return ProductDetailScreen(product: product);
-            },
-          );
+          return ProductDetailScreen(productId: id);
         },
       ),
       GoRoute(

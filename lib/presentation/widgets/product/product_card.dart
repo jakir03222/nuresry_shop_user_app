@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/product_model.dart';
 import '../../providers/favorite_provider.dart';
@@ -53,22 +54,27 @@ class ProductCard extends StatelessWidget {
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
                   ),
-                  child: Image.network(
-                    product.imageUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: product.imageUrl,
                     width: double.infinity,
                     height: 110,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 110,
-                        color: AppColors.borderGrey,
-                        child: const Icon(
-                          Icons.image,
-                          size: 50,
-                          color: AppColors.textSecondary,
-                        ),
-                      );
-                    },
+                    placeholder: (context, url) => Container(
+                      height: 110,
+                      color: AppColors.borderGrey,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 110,
+                      color: AppColors.borderGrey,
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        size: 50,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
                 ),
                 // Favorite Button
