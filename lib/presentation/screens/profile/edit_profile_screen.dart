@@ -122,6 +122,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (mounted) {
         if (success) {
+          // Reload profile to get updated image immediately
+          await authProvider.loadProfile();
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Profile updated successfully!'),

@@ -24,9 +24,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadProfile();
-        // Load wishlist when profile screen opens
-        final favoriteProvider = Provider.of<FavoriteProvider>(context, listen: false);
-        favoriteProvider.loadWishlist();
       }
     });
   }
@@ -139,61 +136,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: Column(
                             children: [
-                              // Profile Picture
-                              Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.backgroundWhite,
-                                  border: Border.all(
-                                    color: AppColors.textWhite,
-                                    width: 4,
-                                  ),
-                                ),
-                                child: ClipOval(
-                                  child: user?.profileImage != null &&
-                                          user!.profileImage!.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: user.profileImage!,
-                                          fit: BoxFit.cover,
-                                          width: 100,
-                                          height: 100,
-                                          placeholder: (context, url) => Container(
-                                            width: 100,
-                                            height: 100,
-                                            color: AppColors.backgroundWhite,
-                                            child: const Center(
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor: AlwaysStoppedAnimation<Color>(
-                                                  AppColors.primaryBlue,
+                              // Profile Picture - Uses Consumer for live updates
+                              Consumer<AuthProvider>(
+                                builder: (context, authProvider, _) {
+                                  final currentUser = authProvider.user;
+                                  return Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.backgroundWhite,
+                                      border: Border.all(
+                                        color: AppColors.textWhite,
+                                        width: 4,
+                                      ),
+                                    ),
+                                    child: ClipOval(
+                                      child: currentUser?.profileImage != null &&
+                                              currentUser!.profileImage!.isNotEmpty
+                                          ? CachedNetworkImage(
+                                              imageUrl: currentUser.profileImage!,
+                                              fit: BoxFit.cover,
+                                              width: 100,
+                                              height: 100,
+                                              placeholder: (context, url) => Container(
+                                                width: 100,
+                                                height: 100,
+                                                color: AppColors.backgroundWhite,
+                                                child: const Center(
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                                      AppColors.primaryBlue,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
+                                              errorWidget: (context, url, error) => Container(
+                                                width: 100,
+                                                height: 100,
+                                                color: AppColors.backgroundWhite,
+                                                child: const Icon(
+                                                  Icons.person,
+                                                  size: 50,
+                                                  color: AppColors.primaryBlue,
+                                                ),
+                                              ),
+                                            )
+                                          : Container(
+                                              width: 100,
+                                              height: 100,
+                                              color: AppColors.backgroundWhite,
+                                              child: const Icon(
+                                                Icons.person,
+                                                size: 50,
+                                                color: AppColors.primaryBlue,
+                                              ),
                                             ),
-                                          ),
-                                          errorWidget: (context, url, error) => Container(
-                                            width: 100,
-                                            height: 100,
-                                            color: AppColors.backgroundWhite,
-                                            child: const Icon(
-                                              Icons.person,
-                                              size: 50,
-                                              color: AppColors.primaryBlue,
-                                            ),
-                                          ),
-                                        )
-                                      : Container(
-                                          width: 100,
-                                          height: 100,
-                                          color: AppColors.backgroundWhite,
-                                          child: const Icon(
-                                            Icons.person,
-                                            size: 50,
-                                            color: AppColors.primaryBlue,
-                                          ),
-                                        ),
-                                ),
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 16),
                               // Name
@@ -311,18 +313,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onTap: () => context.push('/coupons'),
                               ),
                               const SizedBox(height: 12),
-                              Consumer<FavoriteProvider>(
-                                builder: (context, favoriteProvider, _) {
-                                  return _buildProfileOption(
-                                    context,
-                                    icon: Icons.favorite,
-                                    title: 'My Wishlist',
-                                    onTap: () => context.push('/wishlist'),
-                                    badge: favoriteProvider.wishlistCount > 0
-                                        ? favoriteProvider.wishlistCount.toString()
-                                        : null,
-                                  );
-                                },
+                              _buildProfileOption(
+                                context,
+                                icon: Icons.shopping_bag_outlined,
+                                title: 'Order History',
+                                onTap: () => context.push('/order-history'),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildProfileOption(
+                                context,
+                                icon: Icons.favorite,
+                                title: 'My Wishlist',
+                                onTap: () => context.push('/wishlist'),
                               ),
                               const SizedBox(height: 12),
                               _buildProfileOption(

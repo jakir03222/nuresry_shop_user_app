@@ -69,6 +69,9 @@ class ApiConstants {
   // Review Endpoints
   static const String reviews = '/reviews';
 
+  // Payment Method Endpoints
+  static const String paymentMethods = '/payment-methods';
+
   // Headers
   static const String contentType = 'application/json';
   static const String authorization = 'Authorization';

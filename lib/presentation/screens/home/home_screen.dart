@@ -56,60 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.search,
-              color: AppColors.textWhite,
-              size: isTablet ? 28 : 24,
-            ),
-            onPressed: () {},
-          ),
-          Consumer<CartProvider>(
-            builder: (context, cartProvider, child) {
-              final totalQuantity = cartProvider.totalQuantity;
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.shopping_cart,
-                      color: AppColors.textWhite,
-                      size: isTablet ? 28 : 24,
-                    ),
-                    onPressed: () {
-                      context.push('/cart');
-                    },
-                  ),
-                  if (totalQuantity > 0)
-                    Positioned(
-                      right: isTablet ? 10 : 8,
-                      top: isTablet ? 10 : 8,
-                      child: Container(
-                        padding: EdgeInsets.all(isTablet ? 6 : 4),
-                        decoration: const BoxDecoration(
-                          color: AppColors.accentRed,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: BoxConstraints(
-                          minWidth: isTablet ? 20 : 16,
-                          minHeight: isTablet ? 20 : 16,
-                        ),
-                        child: Text(
-                          totalQuantity > 9 ? '9+' : '$totalQuantity',
-                          style: TextStyle(
-                            color: AppColors.textWhite,
-                            fontSize: isTablet ? 12 : 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
+       
       ),
       body: SingleChildScrollView(
         child: Column(

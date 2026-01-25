@@ -594,6 +594,16 @@ class ApiService {
     );
   }
 
+  // Payment Method Endpoints
+  // Get Payment Methods
+  static Future<Map<String, dynamic>> getPaymentMethods() async {
+    return await _makeRequest(
+      endpoint: ApiConstants.paymentMethods,
+      method: 'GET',
+      requireAuth: true,
+    );
+  }
+
   // Update User Profile
   static Future<Map<String, dynamic>> updateProfile({
     String? name,

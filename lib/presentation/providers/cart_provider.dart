@@ -136,14 +136,20 @@ class CartProvider with ChangeNotifier {
       final response = await ApiService.clearCart();
 
       if (response['success'] == true) {
+        // Clear cart data immediately for live update
         _cart = null;
+        _errorMessage = null;
+        _isLoading = false;
+        // Notify listeners immediately for live UI update
+        notifyListeners();
       } else {
         _errorMessage = response['message'] as String? ?? 'Failed to clear cart';
+        _isLoading = false;
+        notifyListeners();
       }
-
-      _isLoading = false;
-      notifyListeners();
     } catch (e) {
+      // Even if API fails, clear cart locally for immediate UI update
+      _cart = null;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
       notifyListeners();
