@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/cart_provider.dart';
-import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/shimmer_loader.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -94,7 +94,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           }
 
           final product = productProvider.currentProduct!;
-          final cartProvider = Provider.of<CartProvider>(context, listen: false);
+ Provider.of<CartProvider>(context, listen: false);
           final allImages = product.images != null && product.images!.isNotEmpty
               ? [product.imageUrl, ...product.images!]
               : [product.imageUrl];
@@ -529,10 +529,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         // Action Buttons
                         Consumer<CartProvider>(
                           builder: (context, cartProvider, child) {
-                            return Row(
+                            return Column(
                               children: [
-                                Expanded(
-                                  child: OutlinedButton(
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
                                     onPressed: cartProvider.isLoading
                                         ? null
                                         : () async {
@@ -559,42 +560,54 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                               }
                                             }
                                           },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryBlue,
+                                      foregroundColor: AppColors.textWhite,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: cartProvider.isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                AppColors.textWhite,
+                                              ),
+                                            ),
+                                          )
+                                        : const Text(
+                                            'Add to Cart',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton(
+                                    onPressed: () => _showReviewDialog(context, product.id),
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(vertical: 16),
                                       side: const BorderSide(color: AppColors.primaryBlue),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
                                     child: const Text(
-                                      'Add to Cart',
+                                      'Write a Review',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
+                                        color: AppColors.primaryBlue,
                                       ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: CustomButton(
-                                    text: 'Buy Now',
-                                    isLoading: cartProvider.isLoading,
-                                    onPressed: () async {
-                                      try {
-                                        await cartProvider.addToCart(product, quantity: _quantity);
-                                        if (context.mounted) {
-                                          context.push('/checkout');
-                                        }
-                                      } catch (e) {
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(cartProvider.errorMessage ?? 'Failed to add to cart'),
-                                              backgroundColor: AppColors.error,
-                                              behavior: SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
                                   ),
                                 ),
                               ],
@@ -630,6 +643,212 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           );
         },
       ),
+    );
+  }
+
+  void _showReviewDialog(BuildContext context, String productId) {
+    int selectedRating = 5;
+    final reviewTextController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'Write a Review',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Rating',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final rating = index + 1;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedRating = rating;
+                            });
+                          },
+                          child: Icon(
+                            rating <= selectedRating
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: AppColors.accentYellow,
+                            size: 40,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Review',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: reviewTextController,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        hintText: 'Write your review here...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderGrey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderGrey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (reviewTextController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please write a review'),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setState(() {
+                            isSubmitting = true;
+                          });
+
+                          try {
+                            final response = await ApiService.createReview(
+                              productId: productId,
+                              rating: selectedRating,
+                              reviewText: reviewTextController.text.trim(),
+                            );
+
+                            if (response['success'] == true) {
+                              if (context.mounted) {
+                                Navigator.of(dialogContext).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      response['message'] as String? ?? 'Review submitted successfully',
+                                    ),
+                                    backgroundColor: AppColors.success,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                // Refresh product to show updated rating
+                                final productProvider = Provider.of<ProductProvider>(
+                                  context,
+                                  listen: false,
+                                );
+                                productProvider.loadProductById(productId);
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      response['message'] as String? ?? 'Failed to submit review',
+                                    ),
+                                    backgroundColor: AppColors.error,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                              setState(() {
+                                isSubmitting = false;
+                              });
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    e.toString().replaceAll('Exception: ', ''),
+                                  ),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                            setState(() {
+                              isSubmitting = false;
+                            });
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: AppColors.textWhite,
+                  ),
+                  child: isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.textWhite,
+                            ),
+                          ),
+                        )
+                      : const Text('Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

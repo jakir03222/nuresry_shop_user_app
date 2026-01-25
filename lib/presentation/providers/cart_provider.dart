@@ -163,4 +163,12 @@ class CartProvider with ChangeNotifier {
   Future<void> loadCartFromCache() async {
     // Implementation for local storage can be added here
   }
+
+  // Clear cart data (for logout)
+  void clearCartData() {
+    _cart = null;
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 }

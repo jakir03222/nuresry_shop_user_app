@@ -165,4 +165,13 @@ class FavoriteProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  // Clear all wishlist data (for logout)
+  void clearAllData() {
+    _favoriteIds.clear();
+    _wishlistProducts.clear();
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 }

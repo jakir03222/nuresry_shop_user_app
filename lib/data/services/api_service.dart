@@ -107,6 +107,14 @@ class ApiService {
   }) async {
     try {
       final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.signUp}');
+      debugPrint('[signUp] API URL: $url');
+      debugPrint('[signUp] Request Data:');
+      debugPrint('  - name: $name');
+      debugPrint('  - email: $email');
+      debugPrint('  - phone: $phone');
+      debugPrint('  - password: ${'*' * password.length}');
+      debugPrint('  - role: user');
+      debugPrint('  - profileImage: ${profileImage != null ? profileImage.path : 'null'}');
       
       var request = http.MultipartRequest('POST', url);
       
@@ -119,27 +127,59 @@ class ApiService {
         'role': 'user'  // Default role for user registration
       });
       
+      debugPrint('[signUp] Request fields: ${request.fields}');
+      
       if (profileImage != null) {
-        request.files.add(await _profilePicturePart(profileImage));
+        final filePart = await _profilePicturePart(profileImage);
+        request.files.add(filePart);
+        debugPrint('[signUp] Profile image added: ${filePart.filename}');
       }
       
+      debugPrint('[signUp] Sending request...');
       http.StreamedResponse streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body) as Map<String, dynamic>;
-        
+      debugPrint('[signUp] Response Status Code: ${response.statusCode}');
+      debugPrint('[signUp] Response Headers: ${response.headers}');
+      debugPrint('[signUp] Response Body: ${response.body}');
+      
+      // Parse response body
+      Map<String, dynamic> responseData;
+      try {
+        responseData = jsonDecode(response.body) as Map<String, dynamic>;
+        debugPrint('[signUp] Parsed Response Data: $responseData');
+      } catch (e) {
+        debugPrint('[signUp] Failed to parse response body: $e');
+        throw Exception('Invalid response from server');
+      }
+      
+      // Check for success status codes (200, 201, etc.)
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         // Check if success is true in the response
         if (responseData['success'] == true) {
+          debugPrint('[signUp] Signup successful!');
+          debugPrint('[signUp] Message: ${responseData['message']}');
+          if (responseData['data'] != null) {
+            debugPrint('[signUp] User Data: ${responseData['data']}');
+          }
           return responseData;
         } else {
-          throw Exception(responseData['message'] ?? 'Sign up failed');
+          final errorMessage = responseData['message'] ?? 'Sign up failed';
+          debugPrint('[signUp] Signup failed: $errorMessage');
+          throw Exception(errorMessage);
         }
       } else {
-        final responseData = jsonDecode(response.body) as Map<String, dynamic>;
-        throw Exception(responseData['message'] ?? 'Sign up failed');
+        // Handle error status codes
+        final errorMessage = responseData['message'] ?? 
+                           responseData['error'] ?? 
+                           'Sign up failed with status ${response.statusCode}';
+        debugPrint('[signUp] HTTP Error ${response.statusCode}: $errorMessage');
+        debugPrint('[signUp] Error Response: $responseData');
+        throw Exception(errorMessage);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[signUp] Exception occurred: $e');
+      debugPrint('[signUp] Stack Trace: $stackTrace');
       rethrow;
     }
   }
@@ -174,6 +214,19 @@ class ApiService {
     );
   }
 
+  // Forgot Password
+  static Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  }) async {
+    return await _makeRequest(
+      endpoint: ApiConstants.forgotPassword,
+      method: 'POST',
+      body: {
+        'email': email,
+      },
+    );
+  }
+
   // Change Password
   static Future<Map<String, dynamic>> changePassword({
     required String currentPassword,
@@ -183,7 +236,7 @@ class ApiService {
       endpoint: ApiConstants.changePassword,
       method: 'POST',
       body: {
-        'currentPassword': currentPassword,
+        'oldPassword': currentPassword,
         'newPassword': newPassword,
       },
       requireAuth: true, // Require authentication token
@@ -518,6 +571,25 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.coupons(page: page, limit: limit),
       method: 'GET',
+      requireAuth: true,
+    );
+  }
+
+  // Review Endpoints
+  // Create Review
+  static Future<Map<String, dynamic>> createReview({
+    required String productId,
+    required int rating,
+    required String reviewText,
+  }) async {
+    return await _makeRequest(
+      endpoint: ApiConstants.reviews,
+      method: 'POST',
+      body: {
+        'productId': productId,
+        'rating': rating,
+        'reviewText': reviewText,
+      },
       requireAuth: true,
     );
   }

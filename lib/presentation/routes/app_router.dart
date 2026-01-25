@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../screens/auth/splash_screen.dart';
+import '../screens/auth/login_screen.dart';
+import '../screens/auth/register_screen.dart';
 import '../screens/auth/get_started_screen.dart';
 import '../screens/auth/create_account_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
@@ -18,31 +21,32 @@ import '../screens/profile/edit_profile_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/settings/change_password_screen.dart';
 import '../screens/profile/coupons_screen.dart';
-import '../screens/contact/contact_us_screen.dart';import '../screens/cart/cart_screen.dart';
-import '../screens/cart/checkout_screen.dart';
+import '../screens/contact/contact_us_screen.dart';
 import '../screens/address/shipping_address_screen.dart';
 import '../screens/order/order_history_screen.dart';
 import '../screens/wishlist/wishlist_screen.dart';
 import '../providers/product_provider.dart';
-import '../providers/cart_provider.dart';
 import '../../core/services/storage_service.dart';
 
 class AppRouter {
   static GoRouter createRouter() {
     return GoRouter(
-      initialLocation: '/get-started',
+      initialLocation: '/splash',
       redirect: (context, state) async {
         // Check if user has saved token
         final accessToken = await StorageService.getAccessToken();
         final isAuthenticated = accessToken != null;
         
-        final isLoginPage = state.uri.path == '/get-started' || 
+        final isAuthPage = state.uri.path == '/splash' ||
+                           state.uri.path == '/login' ||
+                           state.uri.path == '/register' ||
+                           state.uri.path == '/get-started' || 
                            state.uri.path == '/create-account' ||
                            state.uri.path == '/forgot-password' ||
                            state.uri.path == '/otp-verification';
 
-        // If user is authenticated and tries to access login pages, redirect to home
-        if (isAuthenticated && isLoginPage) {
+        // If user is authenticated and tries to access auth pages, redirect to home
+        if (isAuthenticated && isAuthPage) {
           return '/home';
         }
 
@@ -50,12 +54,27 @@ class AppRouter {
         // Only redirect to login for protected pages (profile, settings, etc.)
         final protectedPages = ['/profile', '/edit-profile', '/settings', '/change-password', '/coupons', '/cart', '/checkout', '/shipping-address', '/order-history', '/wishlist', '/contact-us'];
         if (!isAuthenticated && protectedPages.contains(state.uri.path)) {
-          return '/get-started';
+          return '/splash';
         }
 
         return null;
       },
       routes: [
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        name: 'register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
       GoRoute(
         path: '/get-started',
         name: 'get-started',
@@ -116,16 +135,7 @@ class AppRouter {
         builder: (context, state) => const ContactUsScreen(),
       ),
      
-      GoRoute(
-        path: '/cart',
-        name: 'cart',
-        builder: (context, state) => const CartScreen(),
-      ),
-      GoRoute(
-        path: '/checkout',
-        name: 'checkout',
-        builder: (context, state) => const CheckoutScreen(),
-      ),
+     
       GoRoute(
         path: '/shipping-address',
         name: 'shipping-address',

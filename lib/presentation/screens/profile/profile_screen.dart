@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/storage_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/favorite_provider.dart';
+import '../../providers/cart_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,6 +24,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadProfile();
+        // Load wishlist when profile screen opens
+        final favoriteProvider = Provider.of<FavoriteProvider>(context, listen: false);
+        favoriteProvider.loadWishlist();
       }
     });
   }
@@ -305,6 +311,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onTap: () => context.push('/coupons'),
                               ),
                               const SizedBox(height: 12),
+                              Consumer<FavoriteProvider>(
+                                builder: (context, favoriteProvider, _) {
+                                  return _buildProfileOption(
+                                    context,
+                                    icon: Icons.favorite,
+                                    title: 'My Wishlist',
+                                    onTap: () => context.push('/wishlist'),
+                                    badge: favoriteProvider.wishlistCount > 0
+                                        ? favoriteProvider.wishlistCount.toString()
+                                        : null,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 12),
                               _buildProfileOption(
                                 context,
                                 icon: Icons.contact_support,
@@ -337,6 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required VoidCallback onTap,
     bool isDestructive = false,
+    String? badge,
   }) {
     return InkWell(
       onTap: onTap,
@@ -382,6 +403,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
+            if (badge != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accentRed,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badge,
+                  style: const TextStyle(
+                    color: AppColors.textWhite,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             Icon(
               Icons.chevron_right,
               color: AppColors.textSecondary,
@@ -408,10 +447,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(dialogContext).pop();
-                Provider.of<AuthProvider>(context, listen: false).signOut();
-                context.go('/get-started');
+                
+                // Clear all providers
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                final favoriteProvider = Provider.of<FavoriteProvider>(context, listen: false);
+                
+                // Clear all cached data and storage
+                await StorageService.clearAll();
+                
+                // Clear all provider states
+                await authProvider.signOut();
+                cartProvider.clearCartData();
+                favoriteProvider.clearAllData();
+                
+                // Navigate to splash screen (replaces current route)
+                if (context.mounted) {
+                  context.go('/splash');
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentRed,

@@ -3,100 +3,71 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
-  final String email;
-
-  const OtpVerificationScreen({
-    super.key,
-    required this.email,
-  });
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final List<TextEditingController> _otpControllers = List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _rememberMe = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    for (var controller in _otpControllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleVerifyOtp() async {
-    final otp = _otpControllers.map((c) => c.text).join();
-    
-    if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter complete OTP'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
+  void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
       
       setState(() {
         _isLoading = true;
       });
-
+      
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.verifyEmail(
-        otp: otp,
-        email: widget.email,
+      final success = await authProvider.signIn(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
-
+      
       setState(() {
         _isLoading = false;
       });
-
+      
       if (success) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(authProvider.successMessage ?? 'Email verified successfully'),
+            const SnackBar(
+              content: Text('Welcome back!'),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
             ),
           );
-          // Navigate to login screen after successful verification
-          context.go('/login');
+          context.go('/home');
         }
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(authProvider.errorMessage ?? 'OTP verification failed'),
+              content: Text(authProvider.errorMessage ?? 'Login failed'),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
         }
       }
-    }
-  }
-
-  void _onOtpChanged(int index, String value) {
-    if (value.length == 1 && index < 5) {
-      _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
     }
   }
 
@@ -107,41 +78,52 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  Widget _buildOtpField(int index) {
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData prefixIcon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    bool obscureText = false,
+    Widget? suffixIcon,
+  }) {
     return Container(
-      width: 50,
-      height: 60,
       decoration: BoxDecoration(
         color: AppColors.plantMintGreen.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _otpControllers[index].text.isNotEmpty
+          color: controller.text.isNotEmpty
               ? AppColors.plantMediumGreen
               : AppColors.plantLightGreen.withOpacity(0.5),
           width: 1.5,
         ),
       ),
       child: TextFormField(
-        controller: _otpControllers[index],
-        focusNode: _focusNodes[index],
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        maxLength: 1,
+        controller: controller,
+        validator: validator,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
         style: const TextStyle(
-          fontSize: 24,
+          fontSize: 16,
           color: AppColors.plantDarkGreen,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0,
+          fontWeight: FontWeight.w500,
         ),
-        decoration: const InputDecoration(
-          counterText: '',
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(
+            color: AppColors.plantMediumGreen.withOpacity(0.6),
+            fontSize: 16,
+          ),
+          prefixIcon: Icon(
+            prefixIcon,
+            color: AppColors.plantMediumGreen,
+            size: 22,
+          ),
+          suffixIcon: suffixIcon,
           border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         ),
-        onChanged: (value) {
-          setState(() {});
-          _onOtpChanged(index, value);
-        },
+        onChanged: (value) => setState(() {}),
       ),
     );
   }
@@ -150,7 +132,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/register');
+      context.go('/splash');
     }
   }
 
@@ -225,7 +207,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           const SizedBox(height: 32),
                           // Title
                           const Text(
-                            'Verify Email',
+                            'Welcome Back',
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -236,26 +218,99 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           const SizedBox(height: 8),
                           // Subtitle
                           Text(
-                            'Enter the OTP sent to ${widget.email}',
+                            'Login to your account!',
                             style: TextStyle(
                               fontSize: 16,
                               color: AppColors.plantMediumGreen.withOpacity(0.8),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 40),
-                          // OTP Fields
+                          const SizedBox(height: 32),
+                          // Email field
+                          _buildInputField(
+                            controller: _emailController,
+                            hintText: 'Email',
+                            prefixIcon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: Validators.validateEmail,
+                          ),
+                          const SizedBox(height: 20),
+                          // Password field
+                          _buildInputField(
+                            controller: _passwordController,
+                            hintText: 'Password',
+                            prefixIcon: Icons.lock_outline,
+                            obscureText: _obscurePassword,
+                            validator: Validators.validatePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                color: AppColors.plantMediumGreen,
+                                size: 22,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // Remember Me and Forgot Password
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(6, (index) => _buildOtpField(index)),
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _rememberMe = value ?? false;
+                                      });
+                                    },
+                                    activeColor: AppColors.plantMediumGreen,
+                                    checkColor: AppColors.textWhite,
+                                  ),
+                                  const Text(
+                                    'Remember Me',
+                                    style: TextStyle(
+                                      color: AppColors.plantDarkGreen,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  context.push('/forgot-password');
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(
+                                    color: AppColors.plantDarkGreen,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 32),
-                          // Verify Button
+                          // Login button
                           SizedBox(
                             width: double.infinity,
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleVerifyOtp,
+                              onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.plantDarkGreen,
                                 foregroundColor: AppColors.textWhite,
@@ -276,7 +331,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       ),
                                     )
                                   : const Text(
-                                      'Verify OTP',
+                                      'Login',
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
@@ -286,13 +341,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
                           ),
                           const SizedBox(height: 24),
-                          // Resend OTP Link
+                          // Sign up link
                           Center(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  "Didn't receive OTP? ",
+                                  'Don\'t have account? ',
                                   style: TextStyle(
                                     color: AppColors.plantMediumGreen.withOpacity(0.8),
                                     fontSize: 14,
@@ -300,14 +355,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // TODO: Implement resend OTP
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Resend OTP functionality coming soon'),
-                                        backgroundColor: AppColors.plantDarkGreen,
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
+                                    context.push('/register');
                                   },
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
@@ -315,7 +363,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
-                                    'Resend',
+                                    'Sign up',
                                     style: TextStyle(
                                       color: AppColors.plantDarkGreen,
                                       fontSize: 14,

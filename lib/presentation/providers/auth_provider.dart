@@ -125,12 +125,21 @@ class AuthProvider with ChangeNotifier {
     required String password,
     File? profileImage,
   }) async {
+    debugPrint('[AuthProvider.signUp] Starting signup process...');
+    debugPrint('[AuthProvider.signUp] Parameters:');
+    debugPrint('  - name: $name');
+    debugPrint('  - email: $email');
+    debugPrint('  - phone: $phone');
+    debugPrint('  - password length: ${password.length}');
+    debugPrint('  - profileImage: ${profileImage?.path ?? 'null'}');
+    
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
 
     try {
+      debugPrint('[AuthProvider.signUp] Calling ApiService.signUp...');
       final response = await ApiService.signUp(
         name: name,
         email: email,
@@ -139,20 +148,31 @@ class AuthProvider with ChangeNotifier {
         profileImage: profileImage,
       );
 
+      debugPrint('[AuthProvider.signUp] API Response received:');
+      debugPrint('  - success: ${response['success']}');
+      debugPrint('  - message: ${response['message']}');
+      debugPrint('  - data: ${response['data']}');
+
       if (response['success'] == true) {
         _successMessage = response['message'] as String? ?? 'Account created successfully. Please verify your email.';
         _isLoading = false;
+        debugPrint('[AuthProvider.signUp] Signup successful! Message: $_successMessage');
         notifyListeners();
         return true;
       } else {
         _errorMessage = response['message'] as String? ?? 'Sign up failed';
         _isLoading = false;
+        debugPrint('[AuthProvider.signUp] Signup failed: $_errorMessage');
         notifyListeners();
         return false;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
+      debugPrint('[AuthProvider.signUp] Exception caught:');
+      debugPrint('  - Error: $e');
+      debugPrint('  - Stack Trace: $stackTrace');
+      debugPrint('  - Error Message: $_errorMessage');
       notifyListeners();
       return false;
     }
@@ -198,25 +218,38 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: Implement actual API call
-      await Future.delayed(const Duration(seconds: 1));
+      final response = await ApiService.forgotPassword(
+        email: email,
+      );
 
-      _isLoading = false;
-      notifyListeners();
-      return true;
+      if (response['success'] == true) {
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = response['message'] as String? ?? 'Failed to send reset link';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
-  void signOut() async {
+  Future<void> signOut() async {
+    // Clear all storage data
     await StorageService.clearAll();
+    
+    // Clear auth state
     _user = null;
     _isAuthenticated = false;
     _errorMessage = null;
+    _successMessage = null;
+    _isLoading = false;
     notifyListeners();
   }
 

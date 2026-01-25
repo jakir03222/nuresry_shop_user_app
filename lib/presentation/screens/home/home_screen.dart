@@ -45,12 +45,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundGrey,
+        backgroundColor: AppColors.primary,
         elevation: 0,
         title: Text(
           AppStrings.appName,
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: AppColors.textWhite,
             fontSize: isTablet ? 22 : 18,
             fontWeight: FontWeight.bold,
           ),
@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(
               Icons.search,
-              color: AppColors.textPrimary,
+              color: AppColors.textWhite,
               size: isTablet ? 28 : 24,
             ),
             onPressed: () {},
@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   IconButton(
                     icon: Icon(
                       Icons.shopping_cart,
-                      color: AppColors.textPrimary,
+                      color: AppColors.textWhite,
                       size: isTablet ? 28 : 24,
                     ),
                     onPressed: () {
@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       AppStrings.getAllCarousels,
                       style: TextStyle(
-                        color: AppColors.primaryBlue,
+                        color: AppColors.primary,
                         fontSize: isTablet ? 16 : 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -188,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       AppStrings.viewAllCategories,
                       style: TextStyle(
-                        color: AppColors.primaryBlue,
+                        color: AppColors.primary,
                         fontSize: isTablet ? 16 : 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -263,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       AppStrings.viewAllFlashSale,
                       style: TextStyle(
-                        color: AppColors.primaryBlue,
+                        color: AppColors.primary,
                         fontSize: isTablet ? 16 : 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -335,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: const Text(
                             'View All',
                             style: TextStyle(
-                              color: AppColors.primaryBlue,
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -391,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
               break;
           }
         },
-        selectedItemColor: AppColors.primaryBlue,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
         items: const [
           BottomNavigationBarItem(

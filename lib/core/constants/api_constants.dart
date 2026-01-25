@@ -6,7 +6,7 @@ class ApiConstants {
   static const String signUp = '/auth/sign-up';
   static const String verifyEmail = '/auth/verify-email';
   static const String login = '/auth/login';
-  static const String forgotPassword = '/auth/forgot-password';
+  static const String forgotPassword = '/auth/request-password-reset';
   static const String changePassword = '/auth/change-password';
   
   // Carousel Endpoints
@@ -65,6 +65,9 @@ class ApiConstants {
 
   // Coupon Endpoints
   static String coupons({int page = 1, int limit = 10}) => '/coupons?page=$page&limit=$limit';
+
+  // Review Endpoints
+  static const String reviews = '/reviews';
 
   // Headers
   static const String contentType = 'application/json';
