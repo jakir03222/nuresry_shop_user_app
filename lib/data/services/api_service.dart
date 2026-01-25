@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+
 import '../../core/constants/api_constants.dart';
 import '../../core/services/storage_service.dart';
 
@@ -23,13 +25,12 @@ class ApiService {
     }
     try {
       final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
-      
-      final headers = {
-        'Content-Type': ApiConstants.contentType,
-      };
+
+      final headers = {'Content-Type': ApiConstants.contentType};
 
       if (authToken != null) {
-        headers[ApiConstants.authorization] = '${ApiConstants.bearer} $authToken';
+        headers[ApiConstants.authorization] =
+            '${ApiConstants.bearer} $authToken';
       }
 
       http.Response response;
@@ -82,19 +83,30 @@ class ApiService {
     }
   }
 
-  static const List<String> _allowedImageMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  static const List<String> _allowedImageMimes = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+  ];
 
   static Future<http.MultipartFile> _profilePicturePart(File file) async {
     final path = file.path;
     final mimeType = lookupMimeType(path);
-    final contentType = (mimeType != null && _allowedImageMimes.contains(mimeType))
+    final contentType =
+        (mimeType != null && _allowedImageMimes.contains(mimeType))
         ? MediaType.parse(mimeType)
         : MediaType('image', 'jpeg');
     var filename = path.split(Platform.pathSeparator).last;
     if (!filename.contains('.')) {
       filename = 'profilePicture.${contentType.subtype}';
     }
-    return http.MultipartFile.fromPath('profilePicture', path, filename: filename, contentType: contentType);
+    return http.MultipartFile.fromPath(
+      'profilePicture',
+      path,
+      filename: filename,
+      contentType: contentType,
+    );
   }
 
   // Sign Up
@@ -114,35 +126,37 @@ class ApiService {
       debugPrint('  - phone: $phone');
       debugPrint('  - password: ${'*' * password.length}');
       debugPrint('  - role: user');
-      debugPrint('  - profileImage: ${profileImage != null ? profileImage.path : 'null'}');
-      
+      debugPrint(
+        '  - profileImage: ${profileImage != null ? profileImage.path : 'null'}',
+      );
+
       var request = http.MultipartRequest('POST', url);
-      
+
       // Add text fields
       request.fields.addAll({
         'name': name,
         'email': email,
         'password': password,
         'phone': phone,
-        'role': 'user'  // Default role for user registration
+        'role': 'user', // Default role for user registration
       });
-      
+
       debugPrint('[signUp] Request fields: ${request.fields}');
-      
+
       if (profileImage != null) {
         final filePart = await _profilePicturePart(profileImage);
         request.files.add(filePart);
         debugPrint('[signUp] Profile image added: ${filePart.filename}');
       }
-      
+
       debugPrint('[signUp] Sending request...');
       http.StreamedResponse streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       debugPrint('[signUp] Response Status Code: ${response.statusCode}');
       debugPrint('[signUp] Response Headers: ${response.headers}');
       debugPrint('[signUp] Response Body: ${response.body}');
-      
+
       // Parse response body
       Map<String, dynamic> responseData;
       try {
@@ -152,7 +166,7 @@ class ApiService {
         debugPrint('[signUp] Failed to parse response body: $e');
         throw Exception('Invalid response from server');
       }
-      
+
       // Check for success status codes (200, 201, etc.)
       if (response.statusCode >= 200 && response.statusCode < 300) {
         // Check if success is true in the response
@@ -170,9 +184,10 @@ class ApiService {
         }
       } else {
         // Handle error status codes
-        final errorMessage = responseData['message'] ?? 
-                           responseData['error'] ?? 
-                           'Sign up failed with status ${response.statusCode}';
+        final errorMessage =
+            responseData['message'] ??
+            responseData['error'] ??
+            'Sign up failed with status ${response.statusCode}';
         debugPrint('[signUp] HTTP Error ${response.statusCode}: $errorMessage');
         debugPrint('[signUp] Error Response: $responseData');
         throw Exception(errorMessage);
@@ -192,10 +207,7 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.verifyEmail,
       method: 'POST',
-      body: {
-        'email': email,
-        'otp': otp,
-      },
+      body: {'email': email, 'otp': otp},
     );
   }
 
@@ -207,10 +219,7 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.login,
       method: 'POST',
-      body: {
-        'email': email,
-        'password': password,
-      },
+      body: {'email': email, 'password': password},
     );
   }
 
@@ -221,9 +230,7 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.forgotPassword,
       method: 'POST',
-      body: {
-        'email': email,
-      },
+      body: {'email': email},
     );
   }
 
@@ -235,10 +242,7 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.changePassword,
       method: 'POST',
-      body: {
-        'oldPassword': currentPassword,
-        'newPassword': newPassword,
-      },
+      body: {'oldPassword': currentPassword, 'newPassword': newPassword},
       requireAuth: true, // Require authentication token
     );
   }
@@ -254,16 +258,16 @@ class ApiService {
 
   // Get Categories
   static Future<Map<String, dynamic>> getCategories() async {
-    return await _makeRequest(
-      endpoint: ApiConstants.categories,
-      method: 'GET',
-    );
+    return await _makeRequest(endpoint: ApiConstants.categories, method: 'GET');
   }
 
   // Get Active Flash Sales
-  static Future<Map<String, dynamic>> getActiveFlashSales() async {
+  static Future<Map<String, dynamic>> getActiveFlashSales({
+    int page = 1,
+    int limit = 100,
+  }) async {
     return await _makeRequest(
-      endpoint: ApiConstants.flashSalesActive,
+      endpoint: ApiConstants.flashSalesActive(page: page, limit: limit),
       method: 'GET',
       requireAuth: true, // Require authentication token
     );
@@ -274,14 +278,18 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.flashSaleById(saleId),
       method: 'GET',
+      requireAuth: true,
     );
   }
 
   // Get Products by Flash Sale
-  static Future<Map<String, dynamic>> getProductsByFlashSale(String saleId) async {
+  static Future<Map<String, dynamic>> getProductsByFlashSale(
+    String saleId,
+  ) async {
     return await _makeRequest(
       endpoint: ApiConstants.productsByFlashSale(saleId),
       method: 'GET',
+      requireAuth: true,
     );
   }
 
@@ -292,7 +300,11 @@ class ApiService {
     int limit = 10,
   }) async {
     return await _makeRequest(
-      endpoint: ApiConstants.productsByCategory(categoryId, page: page, limit: limit),
+      endpoint: ApiConstants.productsByCategory(
+        categoryId,
+        page: page,
+        limit: limit,
+      ),
       method: 'GET',
       requireAuth: true, // Require authentication token
     );
@@ -324,10 +336,7 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.addToCart,
       method: 'POST',
-      body: {
-        'productId': productId,
-        'quantity': quantity,
-      },
+      body: {'productId': productId, 'quantity': quantity},
       requireAuth: true, // Require authentication token
     );
   }
@@ -340,9 +349,7 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.updateCartItem(productId),
       method: 'PATCH',
-      body: {
-        'quantity': quantity,
-      },
+      body: {'quantity': quantity},
       requireAuth: true, // Require authentication token
     );
   }
@@ -464,7 +471,7 @@ class ApiService {
       'selectedProductIds': selectedProductIds,
       'paymentMethod': paymentMethod.toLowerCase(),
     };
-    
+
     if (notes != null && notes.trim().isNotEmpty) {
       body['notes'] = notes.trim();
     }
@@ -510,15 +517,15 @@ class ApiService {
     return await _makeRequest(
       endpoint: ApiConstants.wishlistsAdd,
       method: 'POST',
-      body: {
-        'productId': productId,
-      },
+      body: {'productId': productId},
       requireAuth: true,
     );
   }
 
   // Remove from Wishlist
-  static Future<Map<String, dynamic>> removeFromWishlist(String productId) async {
+  static Future<Map<String, dynamic>> removeFromWishlist(
+    String productId,
+  ) async {
     return await _makeRequest(
       endpoint: ApiConstants.wishlistRemove(productId),
       method: 'DELETE',
@@ -547,7 +554,9 @@ class ApiService {
 
   // Get User Profile
   static Future<Map<String, dynamic>> getProfile() async {
-    debugPrint('[getProfile] Calling API: ${ApiConstants.baseUrl}${ApiConstants.usersProfile}');
+    debugPrint(
+      '[getProfile] Calling API: ${ApiConstants.baseUrl}${ApiConstants.usersProfile}',
+    );
     try {
       final response = await _makeRequest(
         endpoint: ApiConstants.usersProfile,
@@ -556,7 +565,9 @@ class ApiService {
       );
       debugPrint('[getProfile] API success: ${response['success']}');
       if (response['data'] != null) {
-        debugPrint('[getProfile] User data: name=${response['data']['name']}, email=${response['data']['email']}, profilePicture=${response['data']['profilePicture']}');
+        debugPrint(
+          '[getProfile] User data: name=${response['data']['name']}, email=${response['data']['email']}, profilePicture=${response['data']['profilePicture']}',
+        );
       }
       return response;
     } catch (e, stackTrace) {
@@ -567,7 +578,10 @@ class ApiService {
   }
 
   // Get Coupons
-  static Future<Map<String, dynamic>> getCoupons({int page = 1, int limit = 10}) async {
+  static Future<Map<String, dynamic>> getCoupons({
+    int page = 1,
+    int limit = 10,
+  }) async {
     return await _makeRequest(
       endpoint: ApiConstants.coupons(page: page, limit: limit),
       method: 'GET',
@@ -612,8 +626,10 @@ class ApiService {
     File? profilePicture,
   }) async {
     try {
-      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.usersUpdate}');
-      
+      final url = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.usersUpdate}',
+      );
+
       // Get auth token
       final authToken = await StorageService.getAccessToken();
       if (authToken == null) {
@@ -621,7 +637,7 @@ class ApiService {
       }
 
       var request = http.MultipartRequest('PATCH', url);
-      
+
       // Add headers
       request.headers.addAll({
         'Authorization': '${ApiConstants.bearer} $authToken',
@@ -641,7 +657,7 @@ class ApiService {
       if (profilePicture != null) {
         request.files.add(await _profilePicturePart(profilePicture));
       }
-      
+
       http.StreamedResponse streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -650,7 +666,9 @@ class ApiService {
         return responseData;
       }
 
-      debugPrint('[updateProfile] API error: statusCode=${response.statusCode}');
+      debugPrint(
+        '[updateProfile] API error: statusCode=${response.statusCode}',
+      );
       debugPrint('[updateProfile] response.body: ${response.body}');
 
       Map<String, dynamic>? responseData;
