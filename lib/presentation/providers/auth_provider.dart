@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/api_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/database_service.dart';
 
 class AuthProvider with ChangeNotifier {
   UserModel? _user;
@@ -100,6 +101,10 @@ class AuthProvider with ChangeNotifier {
         _user = UserModel.fromJsonMap(userData);
         _isAuthenticated = true;
         _isLoading = false;
+        
+        // Save user profile to SQLite cache
+        await DatabaseService.saveUserProfile(userData);
+        
         notifyListeners();
         return true;
       } else {
@@ -244,6 +249,9 @@ class AuthProvider with ChangeNotifier {
     // Clear all storage data
     await StorageService.clearAll();
     
+    // Clear user profile from SQLite cache
+    await DatabaseService.clearUserProfile();
+    
     // Clear auth state
     _user = null;
     _isAuthenticated = false;
@@ -264,18 +272,44 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Load user profile from API
-  Future<void> loadProfile() async {
+  // Load user profile - with SQLite cache
+  Future<void> loadProfile({bool forceRefresh = false}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      // Check SQLite cache first (unless force refresh)
+      if (!forceRefresh) {
+        final cachedProfile = await DatabaseService.getUserProfile();
+        if (cachedProfile != null) {
+          _user = UserModel.fromJsonMap(cachedProfile);
+          _isLoading = false;
+          notifyListeners();
+
+          // Check if data is stale, refresh in background
+          final isStale = await DatabaseService.isDataStale(
+            DatabaseService.tableUser,
+            maxAgeMinutes: 15,
+          );
+          if (isStale) {
+            // Refresh in background without blocking UI
+            _refreshProfileFromApi();
+          }
+          return;
+        }
+      }
+
+      // Fetch from API
       final response = await ApiService.getProfile();
 
       if (response['success'] == true && response['data'] != null) {
         final userData = response['data'] as Map<String, dynamic>;
         _user = UserModel.fromJsonMap(userData);
+        
+        // Save to SQLite cache
+        await DatabaseService.saveUserProfile(userData);
+        
         _isLoading = false;
         notifyListeners();
       } else {
@@ -285,11 +319,34 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e, stackTrace) {
+      // If API fails, try to load from cache
+      try {
+        final cachedProfile = await DatabaseService.getUserProfile();
+        if (cachedProfile != null) {
+          _user = UserModel.fromJsonMap(cachedProfile);
+        }
+      } catch (_) {}
+
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       debugPrint('[loadProfile] Exception: $e');
       debugPrint('[loadProfile] stackTrace: $stackTrace');
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _refreshProfileFromApi() async {
+    try {
+      final response = await ApiService.getProfile();
+      if (response['success'] == true && response['data'] != null) {
+        final userData = response['data'] as Map<String, dynamic>;
+        await DatabaseService.saveUserProfile(userData);
+        // Update UI if currently viewing profile
+        _user = UserModel.fromJsonMap(userData);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[AuthProvider] Background profile refresh failed: $e');
     }
   }
 
@@ -315,6 +372,10 @@ class AuthProvider with ChangeNotifier {
       if (response['success'] == true && response['data'] != null) {
         final userData = response['data'] as Map<String, dynamic>;
         _user = UserModel.fromJsonMap(userData);
+        
+        // Save updated profile to SQLite cache
+        await DatabaseService.saveUserProfile(userData);
+        
         _isLoading = false;
         notifyListeners();
         return true;

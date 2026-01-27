@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'database_service.dart';
 
 class StorageService {
   static const String _keyAccessToken = 'access_token';
@@ -104,5 +105,8 @@ class StorageService {
     await prefs.remove(_keyUserRole);
     await prefs.remove(_keyUserStatus);
     await prefs.remove(_keyCartData);
+    
+    // Clear SQLite database cache
+    await DatabaseService.clearAllData();
   }
 }

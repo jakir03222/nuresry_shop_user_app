@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../../data/models/address_model.dart';
 import '../../../data/services/api_service.dart';
+import '../../../core/services/database_service.dart';
 
 class AddressProvider with ChangeNotifier {
   final List<AddressModel> _addresses = [];
@@ -19,12 +20,37 @@ class AddressProvider with ChangeNotifier {
     }
   }
 
-  Future<void> loadAddresses() async {
+  Future<void> loadAddresses({bool forceRefresh = false}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      // Check SQLite cache first (unless force refresh)
+      if (!forceRefresh) {
+        final cachedAddresses = await DatabaseService.getAddresses();
+        if (cachedAddresses.isNotEmpty) {
+          _addresses.clear();
+          _addresses.addAll(
+            cachedAddresses
+                .map((json) => AddressModel.fromJsonMap(json)),
+          );
+          _isLoading = false;
+          notifyListeners();
+
+          // Refresh in background if stale
+          final isStale = await DatabaseService.isDataStale(
+            DatabaseService.tableAddresses,
+            maxAgeMinutes: 30,
+          );
+          if (isStale) {
+            _refreshAddressesFromApi();
+          }
+          return;
+        }
+      }
+
+      // Fetch from API
       final response = await ApiService.getAddresses();
 
       if (response['success'] == true && response['data'] != null) {
@@ -33,6 +59,11 @@ class AddressProvider with ChangeNotifier {
         _addresses.addAll(
           data.map((json) => AddressModel.fromJsonMap(json as Map<String, dynamic>)),
         );
+
+        // Save to SQLite
+        await DatabaseService.saveAddresses(
+          data.map((e) => e as Map<String, dynamic>).toList(),
+        );
       } else {
         _errorMessage = response['message'] as String? ?? 'Failed to load addresses';
         _addresses.clear();
@@ -40,10 +71,42 @@ class AddressProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
+      // If API fails, try to load from cache
+      try {
+        final cachedAddresses = await DatabaseService.getAddresses();
+        if (cachedAddresses.isNotEmpty) {
+          _addresses.clear();
+          _addresses.addAll(
+            cachedAddresses
+                .map((json) => AddressModel.fromJsonMap(json)),
+          );
+        }
+      } catch (_) {}
+
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _addresses.clear();
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _refreshAddressesFromApi() async {
+    try {
+      final response = await ApiService.getAddresses();
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'] as List<dynamic>;
+        await DatabaseService.saveAddresses(
+          data.map((e) => e as Map<String, dynamic>).toList(),
+        );
+        // Update UI
+        _addresses.clear();
+        _addresses.addAll(
+          data.map((json) => AddressModel.fromJsonMap(json as Map<String, dynamic>)),
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[AddressProvider] Background refresh failed: $e');
     }
   }
 

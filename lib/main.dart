@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/database_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/product_provider.dart';
 import 'presentation/providers/cart_provider.dart';
@@ -13,6 +14,15 @@ import 'presentation/routes/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize SQLite database
+  try {
+    await DatabaseService.initialize();
+  } catch (e) {
+    debugPrint('[main] Database initialization failed: $e');
+    // Continue app startup even if database fails
+  }
+  
   runApp(const MyApp());
 }
 

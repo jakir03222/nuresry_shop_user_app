@@ -110,7 +110,7 @@ class AllFlashSalesScreen extends StatelessWidget {
                       context.push('/flash-sale-products/${flashSale.id}');
                     },
                   );
-                }).toList(),
+                }),
               ],
             ),
           );

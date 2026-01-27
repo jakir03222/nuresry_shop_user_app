@@ -56,7 +56,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         centerTitle: true,
-       
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, color: AppColors.textWhite),
+            onPressed: () => context.push('/product-search'),
+            tooltip: 'Search Products',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -167,6 +173,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
                 final categories = productProvider.categories;
+                
+                if (categories.isEmpty) {
+                  return SizedBox(
+                    height: categoryHeight,
+                    child: Center(
+                      child: Text(
+                        'No categories available',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                
+                // Calculate card width for horizontal list
+                final cardWidth = (screenWidth * 0.35).clamp(120.0, 160.0);
+                
                 return SizedBox(
                   height: categoryHeight,
                   width: double.infinity,
@@ -177,11 +202,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemBuilder: (context, index) {
                       final category = categories[index];
                       final categoryId = category.id;
-                      return CategoryCard(
-                        category: category,
-                        onTap: () {
-                          context.push('/category-products/$categoryId');
-                        },
+                      return SizedBox(
+                        width: cardWidth,
+                        child: CategoryCard(
+                          category: category,
+                          onTap: () {
+                            context.push('/category-products/$categoryId');
+                          },
+                        ),
                       );
                     },
                   ),

@@ -32,10 +32,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) return;
 
-    setState(() => _isLoadingProfile = true);
+    // Load from cache first for instant display
+    setState(() => _isLoadingProfile = false);
+    
+    // Then sync with API in background
     try {
-      await authProvider.loadProfile();
+      await authProvider.loadProfile(forceRefresh: false);
     } catch (_) {}
+    
     if (mounted) setState(() => _isLoadingProfile = false);
   }
 

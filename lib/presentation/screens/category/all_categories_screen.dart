@@ -38,7 +38,7 @@ class AllCategoriesScreen extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.85,
+                childAspectRatio: 0.75,
               ),
               itemCount: 6,
               itemBuilder: (context, index) {
@@ -65,7 +65,7 @@ class AllCategoriesScreen extends StatelessWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 0.85,
+              childAspectRatio: 0.75,
             ),
             itemCount: categories.length,
             itemBuilder: (context, index) {

@@ -27,6 +27,7 @@ import '../screens/cart/checkout_screen.dart';
 import '../screens/address/shipping_address_screen.dart';
 import '../screens/order/order_history_screen.dart';
 import '../screens/wishlist/wishlist_screen.dart';
+import '../screens/product/product_search_screen.dart';
 import '../providers/product_provider.dart';
 import '../../core/services/storage_service.dart';
 
@@ -199,6 +200,11 @@ class AppRouter {
           final id = state.pathParameters['id'] ?? '';
           return ProductDetailScreen(productId: id);
         },
+      ),
+      GoRoute(
+        path: '/product-search',
+        name: 'product-search',
+        builder: (context, state) => const ProductSearchScreen(),
       ),
       GoRoute(
         path: '/flash-sale/:id',

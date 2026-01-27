@@ -319,6 +319,23 @@ class ApiService {
     );
   }
 
+  // Search Products by Tags
+  static Future<Map<String, dynamic>> searchProductsByTags({
+    String? tags,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    return await _makeRequest(
+      endpoint: ApiConstants.productsByTags(
+        tags: tags,
+        page: page,
+        limit: limit,
+      ),
+      method: 'GET',
+      requireAuth: true, // Require authentication token
+    );
+  }
+
   // Get Cart
   static Future<Map<String, dynamic>> getCart() async {
     return await _makeRequest(

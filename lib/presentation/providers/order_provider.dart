@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/services/api_service.dart';
+import '../../../core/services/database_service.dart';
 
 class OrderProvider with ChangeNotifier {
   final List<OrderModel> _orders = [];
@@ -32,6 +33,7 @@ class OrderProvider with ChangeNotifier {
     int page = 1,
     String? orderStatus,
     bool loadMore = false,
+    bool forceRefresh = false,
   }) async {
     if (loadMore && _isLoading) return;
 
@@ -46,6 +48,30 @@ class OrderProvider with ChangeNotifier {
       final status = orderStatus ?? _selectedStatus;
       final filter = (status == 'all' || status.isEmpty) ? null : status;
 
+      // Check SQLite cache first (unless force refresh or loading more)
+      if (!forceRefresh && !loadMore && page == 1) {
+        final cachedOrders = await DatabaseService.getOrders(status: filter);
+        if (cachedOrders.isNotEmpty) {
+          _orders.clear();
+          _orders.addAll(
+            cachedOrders.map((e) => OrderModel.fromJson(e)).toList(),
+          );
+          _isLoading = false;
+          notifyListeners();
+
+          // Refresh in background if stale
+          final isStale = await DatabaseService.isDataStale(
+            DatabaseService.tableOrders,
+            maxAgeMinutes: 15,
+          );
+          if (isStale) {
+            _refreshOrdersFromApi(page, filter);
+          }
+          return;
+        }
+      }
+
+      // Fetch from API
       final response = await ApiService.getMyOrders(
         page: page,
         limit: _limitPerPage,
@@ -68,6 +94,13 @@ class OrderProvider with ChangeNotifier {
           _orders.addAll(newOrders);
         }
 
+        // Save to SQLite (only first page for cache)
+        if (page == 1 && !loadMore) {
+          await DatabaseService.saveOrders(
+            ordersList.map((e) => e as Map<String, dynamic>).toList(),
+          );
+        }
+
         if (meta != null) {
           final td = meta['totalDocuments'];
           _totalDocuments = td is int ? td : (int.tryParse(td?.toString() ?? '0') ?? 0);
@@ -80,12 +113,56 @@ class OrderProvider with ChangeNotifier {
         if (!loadMore) _orders.clear();
       }
     } catch (e) {
+      // If API fails, try to load from cache
+      if (!loadMore && page == 1) {
+        try {
+          final statusForCache = orderStatus ?? _selectedStatus;
+          final filterForCache = (statusForCache == 'all' || statusForCache.isEmpty) ? null : statusForCache;
+          final cachedOrders = await DatabaseService.getOrders(status: filterForCache);
+          if (cachedOrders.isNotEmpty) {
+            _orders.clear();
+            _orders.addAll(
+              cachedOrders.map((e) => OrderModel.fromJson(e)).toList(),
+            );
+          }
+        } catch (_) {}
+      }
+
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       if (!loadMore) _orders.clear();
     }
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> _refreshOrdersFromApi(int page, String? filter) async {
+    try {
+      final response = await ApiService.getMyOrders(
+        page: page,
+        limit: _limitPerPage,
+        orderStatus: filter,
+      );
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'] as Map<String, dynamic>;
+        final ordersList = data['orders'] as List<dynamic>? ?? [];
+        await DatabaseService.saveOrders(
+          ordersList.map((e) => e as Map<String, dynamic>).toList(),
+        );
+        // Update UI if currently viewing orders
+        if (_orders.isEmpty || page == 1) {
+          _orders.clear();
+          _orders.addAll(
+            ordersList
+                .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+                .toList(),
+          );
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('[OrderProvider] Background refresh failed: $e');
+    }
   }
 
   Future<void> setFilter(String status) async {

@@ -47,7 +47,7 @@ class FlashSaleModel implements BaseModel {
     if (discountType == 'percentage') {
       return '$discountValue% OFF';
     }
-    return '${discountValue}৳ OFF';
+    return '$discountValue৳ OFF';
   }
 
   @override

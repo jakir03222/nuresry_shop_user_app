@@ -34,6 +34,19 @@ class ApiConstants {
   }) {
     return '/products/category/$categoryId?page=$page&limit=$limit';
   }
+  static String productsByTags({
+    String? tags,
+    int page = 1,
+    int limit = 10,
+  }) {
+    var queryParams = <String>[];
+    if (tags != null && tags.isNotEmpty) {
+      queryParams.add('tags=$tags');
+    }
+    queryParams.add('page=$page');
+    queryParams.add('limit=$limit');
+    return '/products?${queryParams.join('&')}';
+  }
 
   // Cart Endpoints
   static const String carts = '/carts';
