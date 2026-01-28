@@ -109,21 +109,26 @@ class ApiService {
     );
   }
 
-  // Sign Up
+  // Sign Up - supports either email or phone
   static Future<Map<String, dynamic>> signUp({
     required String name,
-    required String email,
-    required String phone,
+    String? email,
+    String? phone,
     required String password,
     File? profileImage,
   }) async {
+    // Validate that at least one identifier is provided
+    if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
+      throw Exception('Either email or phone is required');
+    }
+    
     try {
       final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.signUp}');
       debugPrint('[signUp] API URL: $url');
       debugPrint('[signUp] Request Data:');
       debugPrint('  - name: $name');
-      debugPrint('  - email: $email');
-      debugPrint('  - phone: $phone');
+      debugPrint('  - email: ${email ?? 'not provided'}');
+      debugPrint('  - phone: ${phone ?? 'not provided'}');
       debugPrint('  - password: ${'*' * password.length}');
       debugPrint('  - role: user');
       debugPrint(
@@ -132,14 +137,22 @@ class ApiService {
 
       var request = http.MultipartRequest('POST', url);
 
-      // Add text fields
+      // Add required fields
       request.fields.addAll({
         'name': name,
-        'email': email,
         'password': password,
-        'phone': phone,
         'role': 'user', // Default role for user registration
       });
+      
+      // Add optional email if provided
+      if (email != null && email.isNotEmpty) {
+        request.fields['email'] = email;
+      }
+      
+      // Add optional phone if provided
+      if (phone != null && phone.isNotEmpty) {
+        request.fields['phone'] = phone;
+      }
 
       debugPrint('[signUp] Request fields: ${request.fields}');
 
@@ -211,15 +224,31 @@ class ApiService {
     );
   }
 
-  // Login
+  // Login - supports both email and phone
   static Future<Map<String, dynamic>> login({
-    required String email,
+    String? email,
+    String? phone,
     required String password,
   }) async {
+    // Validate that at least one identifier is provided
+    if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
+      throw Exception('Either email or phone is required');
+    }
+    
+    final body = <String, dynamic>{'password': password};
+    
+    if (email != null && email.isNotEmpty) {
+      body['email'] = email;
+    }
+    
+    if (phone != null && phone.isNotEmpty) {
+      body['phone'] = phone;
+    }
+    
     return await _makeRequest(
       endpoint: ApiConstants.login,
       method: 'POST',
-      body: {'email': email, 'password': password},
+      body: body,
     );
   }
 
@@ -261,6 +290,14 @@ class ApiService {
     return await _makeRequest(endpoint: ApiConstants.categories, method: 'GET');
   }
 
+  // Get Category by ID
+  static Future<Map<String, dynamic>> getCategoryById(String categoryId) async {
+    return await _makeRequest(
+      endpoint: ApiConstants.categoryById(categoryId),
+      method: 'GET',
+    );
+  }
+
   // Get Active Flash Sales
   static Future<Map<String, dynamic>> getActiveFlashSales({
     int page = 1,
@@ -299,14 +336,67 @@ class ApiService {
     int page = 1,
     int limit = 10,
   }) async {
+    final endpoint = ApiConstants.productsByCategory(
+      categoryId,
+      page: page,
+      limit: limit,
+    );
+    final url = '${ApiConstants.baseUrl}$endpoint';
+    
+    debugPrint('[ApiService.getProductsByCategory] ========== API CALL START ==========');
+    debugPrint('[ApiService.getProductsByCategory] URL: $url');
+    debugPrint('[ApiService.getProductsByCategory] Method: GET');
+    debugPrint('[ApiService.getProductsByCategory] Parameters:');
+    debugPrint('  - categoryId: $categoryId');
+    debugPrint('  - page: $page');
+    debugPrint('  - limit: $limit');
+    debugPrint('[ApiService.getProductsByCategory] Require Auth: true');
+    
+    try {
+      final response = await _makeRequest(
+        endpoint: endpoint,
+        method: 'GET',
+        requireAuth: true, // Require authentication token
+      );
+      
+      debugPrint('[ApiService.getProductsByCategory] ========== API CALL SUCCESS ==========');
+      debugPrint('[ApiService.getProductsByCategory] Response success: ${response['success']}');
+      debugPrint('[ApiService.getProductsByCategory] Response message: ${response['message']}');
+      
+      if (response['data'] != null) {
+        if (response['data'] is List) {
+          debugPrint('[ApiService.getProductsByCategory] Response data type: List');
+          debugPrint('[ApiService.getProductsByCategory] Response data length: ${(response['data'] as List).length}');
+        } else {
+          debugPrint('[ApiService.getProductsByCategory] Response data type: ${response['data'].runtimeType}');
+        }
+      } else {
+        debugPrint('[ApiService.getProductsByCategory] Response data: null');
+      }
+      
+      if (response['meta'] != null) {
+        debugPrint('[ApiService.getProductsByCategory] Response meta: ${response['meta']}');
+      }
+      
+      return response;
+    } catch (e, stackTrace) {
+      debugPrint('[ApiService.getProductsByCategory] ========== API CALL ERROR ==========');
+      debugPrint('[ApiService.getProductsByCategory] Error: $e');
+      debugPrint('[ApiService.getProductsByCategory] Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  // Get All Products
+  static Future<Map<String, dynamic>> getAllProducts({
+    int page = 1,
+    int limit = 1000,
+  }) async {
+    final endpoint = ApiConstants.allProducts(page: page, limit: limit);
     return await _makeRequest(
-      endpoint: ApiConstants.productsByCategory(
-        categoryId,
-        page: page,
-        limit: limit,
-      ),
+      endpoint: endpoint,
       method: 'GET',
-      requireAuth: true, // Require authentication token
+      requireAuth: true,
     );
   }
 
@@ -319,15 +409,17 @@ class ApiService {
     );
   }
 
-  // Search Products by Tags
+  // Search Products by Tags and/or Name
   static Future<Map<String, dynamic>> searchProductsByTags({
     String? tags,
+    String? searchTerm,
     int page = 1,
     int limit = 10,
   }) async {
     return await _makeRequest(
       endpoint: ApiConstants.productsByTags(
         tags: tags,
+        searchTerm: searchTerm,
         page: page,
         limit: limit,
       ),

@@ -36,9 +36,33 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final identifier = _emailController.text.trim();
+      
+      // Determine if input is email or phone
+      final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(identifier);
+      final isPhone = RegExp(r'^\d{11}$').hasMatch(identifier);
+      
+      // Validate that at least one identifier is provided
+      if (!isEmail && !isPhone) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter a valid email or 11-digit phone number'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+      
       final success = await authProvider.signIn(
-        _emailController.text.trim(),
-        _passwordController.text,
+        email: isEmail ? identifier : null,
+        phone: isPhone ? identifier : null,
+        password: _passwordController.text,
       );
       
       setState(() {
@@ -225,13 +249,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 32),
-                          // Email field
+                          // Email or Phone field
                           _buildInputField(
                             controller: _emailController,
-                            hintText: 'Email',
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: Validators.validateEmail,
+                            hintText: 'Email or Phone',
+                            prefixIcon: Icons.person_outline,
+                            keyboardType: TextInputType.text,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Email or phone is required';
+                              }
+                              final trimmed = value.trim();
+                              final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(trimmed);
+                              final isPhone = RegExp(r'^\d{11}$').hasMatch(trimmed);
+                              if (!isEmail && !isPhone) {
+                                return 'Please enter a valid email or 11-digit phone number';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 20),
                           // Password field

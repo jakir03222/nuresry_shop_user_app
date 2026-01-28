@@ -26,6 +26,8 @@ class AppStrings {
   static const String viewAllCategories = 'View All Categories';
   static const String flashSale = 'Flash Sale';
   static const String viewAllFlashSale = 'View All Flash Sale';
+  static const String products = 'Products';
+  static const String viewAllProducts = 'View All Products';
   
   // Product Details
   static const String unitPrice = 'Unit Price:';

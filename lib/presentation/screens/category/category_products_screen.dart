@@ -25,9 +25,15 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[CategoryProductsScreen] initState - Category ID: ${widget.categoryId}');
+    
     // Load products by category when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted) {
+        debugPrint('[CategoryProductsScreen] Widget not mounted, skipping load');
+        return;
+      }
+      debugPrint('[CategoryProductsScreen] Loading products for category: ${widget.categoryId}');
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
       productProvider.resetCategoryProducts();
       productProvider.loadProductsByCategory(widget.categoryId);
@@ -97,6 +103,13 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       ),
       body: Consumer<ProductProvider>(
         builder: (context, productProvider, child) {
+          debugPrint('[CategoryProductsScreen] Building UI - Category ID: ${widget.categoryId}');
+          debugPrint('[CategoryProductsScreen] isLoading: ${productProvider.isLoading}');
+          debugPrint('[CategoryProductsScreen] isLoadingMore: ${productProvider.isLoadingMore}');
+          debugPrint('[CategoryProductsScreen] errorMessage: ${productProvider.errorMessage}');
+          debugPrint('[CategoryProductsScreen] products count: ${productProvider.categoryProducts.length}');
+          debugPrint('[CategoryProductsScreen] hasMoreProducts: ${productProvider.hasMoreProducts}');
+          
           if (productProvider.isLoading) {
             final screenWidth = MediaQuery.of(context).size.width;
             final itemWidth = (screenWidth - 48) / 2; // screen width - padding - spacing
@@ -123,31 +136,66 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
 
           if (productProvider.errorMessage != null) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 80,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    productProvider.errorMessage ?? 'Failed to load products',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textSecondary,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 80,
+                      color: AppColors.error,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      productProvider.loadProductsByCategory(widget.categoryId);
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error Loading Products',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      productProvider.errorMessage ?? 'Failed to load products',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Category ID: ${widget.categoryId}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary.withOpacity(0.7),
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        debugPrint('[CategoryProductsScreen] Retry button pressed');
+                        debugPrint('[CategoryProductsScreen] Category ID: ${widget.categoryId}');
+                        productProvider.resetCategoryProducts();
+                        productProvider.loadProductsByCategory(widget.categoryId);
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: AppColors.textWhite,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }

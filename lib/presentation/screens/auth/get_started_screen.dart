@@ -36,9 +36,33 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
       });
       
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final identifier = _emailController.text.trim();
+      
+      // Determine if input is email or phone
+      final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(identifier);
+      final isPhone = RegExp(r'^\d{11}$').hasMatch(identifier);
+      
+      // Validate that at least one identifier is provided
+      if (!isEmail && !isPhone) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter a valid email or 11-digit phone number'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+      
       final success = await authProvider.signIn(
-        _emailController.text.trim(),
-        _passwordController.text,
+        email: isEmail ? identifier : null,
+        phone: isPhone ? identifier : null,
+        password: _passwordController.text,
       );
       
       setState(() {

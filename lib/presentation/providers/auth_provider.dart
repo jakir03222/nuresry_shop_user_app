@@ -53,7 +53,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> signIn(String email, String password) async {
+  Future<bool> signIn({
+    String? email,
+    String? phone,
+    required String password,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -61,6 +65,7 @@ class AuthProvider with ChangeNotifier {
     try {
       final response = await ApiService.login(
         email: email,
+        phone: phone,
         password: password,
       );
 
@@ -93,7 +98,11 @@ class AuthProvider with ChangeNotifier {
         // Save tokens and user data
         await StorageService.saveAccessToken(accessToken);
         await StorageService.saveRefreshToken(refreshToken);
-        await StorageService.saveUserEmail(userData['email'] as String);
+        // Save email if available (may be null if logged in with phone)
+        final userEmail = userData['email'] as String?;
+        if (userEmail != null && userEmail.isNotEmpty) {
+          await StorageService.saveUserEmail(userEmail);
+        }
         await StorageService.saveUserRole(role);
         await StorageService.saveUserStatus(status);
 
@@ -125,16 +134,24 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> signUp({
     required String name,
-    required String email,
-    required String phone,
+    String? email,
+    String? phone,
     required String password,
     File? profileImage,
   }) async {
+    // Validate that at least one identifier is provided
+    if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
+      _errorMessage = 'Either email or phone number is required';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+    
     debugPrint('[AuthProvider.signUp] Starting signup process...');
     debugPrint('[AuthProvider.signUp] Parameters:');
     debugPrint('  - name: $name');
-    debugPrint('  - email: $email');
-    debugPrint('  - phone: $phone');
+    debugPrint('  - email: ${email ?? 'not provided'}');
+    debugPrint('  - phone: ${phone ?? 'not provided'}');
     debugPrint('  - password length: ${password.length}');
     debugPrint('  - profileImage: ${profileImage?.path ?? 'null'}');
     

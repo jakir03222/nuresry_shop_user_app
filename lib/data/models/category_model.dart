@@ -41,18 +41,28 @@ class CategoryModel implements BaseModel {
   }
 
   static CategoryModel fromJsonMap(Map<String, dynamic> json) {
+    // Safely parse productCount - handle both int and string types
+    int? parseProductCount(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is String) {
+        return int.tryParse(value);
+      }
+      return null;
+    }
+    
     return CategoryModel(
-      id: json['_id'] ?? json['id'] ?? '',
-      title: json['title'] ?? json['name'] ?? '',
-      image: json['image'] ?? json['imageUrl'] ?? '',
-      description: json['description'],
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? json['name']?.toString() ?? '',
+      image: json['image']?.toString() ?? json['imageUrl']?.toString() ?? '',
+      description: json['description']?.toString(),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.tryParse(json['createdAt'].toString())
           : null,
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
+          ? DateTime.tryParse(json['updatedAt'].toString())
           : null,
-      productCount: json['productCount'],
+      productCount: parseProductCount(json['productCount']),
     );
   }
 

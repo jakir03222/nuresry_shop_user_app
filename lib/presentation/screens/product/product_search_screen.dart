@@ -38,7 +38,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
       if (productProvider.hasMoreSearchResults &&
           !productProvider.isLoadingMoreSearch) {
         productProvider.searchProductsByTags(
-          tags: _currentSearchQuery,
+          searchTerm: _currentSearchQuery,
           loadMore: true,
         );
       }
@@ -61,7 +61,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
 
     final productProvider = Provider.of<ProductProvider>(context, listen: false);
     productProvider.resetSearchResults();
-    productProvider.searchProductsByTags(tags: _currentSearchQuery);
+    productProvider.searchProductsByTags(searchTerm: _currentSearchQuery);
   }
 
   @override
@@ -95,7 +95,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
               fontSize: 16,
             ),
             decoration: InputDecoration(
-              hintText: 'Search by tags (e.g., rose, flower, outdoor)',
+              hintText: 'Search by name or tags (e.g., banana, apple)',
               hintStyle: TextStyle(
                 color: AppColors.textSecondary.withOpacity(0.7),
                 fontSize: 14,
@@ -198,7 +198,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Search products by tags',
+                    'Search products by name or tags',
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 18,
@@ -209,7 +209,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Text(
-                      'Enter tags like "rose", "flower", "outdoor" to find products',
+                      'Enter product name or tags like "banana", "apple" to find products',
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 14,
@@ -243,7 +243,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Try different tags',
+                    'Try a different search term',
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,

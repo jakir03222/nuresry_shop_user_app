@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../core/interfaces/base_model.dart';
 
 class ProductModel implements BaseModel {
@@ -74,19 +75,56 @@ class ProductModel implements BaseModel {
   }
 
   static ProductModel fromJsonMap(Map<String, dynamic> json) {
-    final price = (json['price'] ?? json['unitPrice'] ?? 0).toDouble();
-    final discount = (json['discount'] ?? 0).toDouble();
-    final discountType = json['discountType'] ?? 'percentage';
+    debugPrint('[ProductModel.fromJsonMap] ========== PARSING PRODUCT ==========');
+    debugPrint('[ProductModel.fromJsonMap] Product ID: ${json['_id'] ?? json['id']}');
+    debugPrint('[ProductModel.fromJsonMap] Product Name: ${json['name']}');
+    
+    // Helper function to safely convert to double
+    double safeToDouble(dynamic value, [double defaultValue = 0.0]) {
+      if (value == null) return defaultValue;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) {
+        return double.tryParse(value) ?? defaultValue;
+      }
+      if (value is num) return value.toDouble();
+      return defaultValue;
+    }
+    
+    // Helper function to safely convert to int
+    int safeToInt(dynamic value, [int defaultValue = 0]) {
+      if (value == null) return defaultValue;
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      if (value is String) {
+        return int.tryParse(value) ?? defaultValue;
+      }
+      if (value is num) return value.toInt();
+      return defaultValue;
+    }
+    
+    final price = safeToDouble(json['price'] ?? json['unitPrice'], 0.0);
+    final discount = safeToDouble(json['discount'], 0.0);
+    final discountType = json['discountType']?.toString() ?? 'percentage';
+    
+    debugPrint('[ProductModel.fromJsonMap] Price: $price');
+    debugPrint('[ProductModel.fromJsonMap] Discount: $discount');
+    debugPrint('[ProductModel.fromJsonMap] Discount Type: $discountType');
     
     double? discountPrice;
     if (json['discountPrice'] != null) {
-      discountPrice = (json['discountPrice'] as num).toDouble();
+      discountPrice = safeToDouble(json['discountPrice']);
+      debugPrint('[ProductModel.fromJsonMap] Discount Price (from API): $discountPrice');
     } else if (discount > 0) {
       if (discountType == 'fixed') {
         discountPrice = price - discount;
+        debugPrint('[ProductModel.fromJsonMap] Discount Price (fixed): $discountPrice');
       } else {
         discountPrice = price * (1 - discount / 100);
+        debugPrint('[ProductModel.fromJsonMap] Discount Price (percentage): $discountPrice');
       }
+    } else {
+      debugPrint('[ProductModel.fromJsonMap] No discount applied');
     }
     
     // Handle tags - can be array or comma-separated string
@@ -95,41 +133,68 @@ class ProductModel implements BaseModel {
       if (json['tags'] is List) {
         tagsList = (json['tags'] as List).map((e) => e.toString()).toList();
       } else if (json['tags'] is String) {
-        tagsList = (json['tags'] as String).split(',').map((e) => e.trim()).toList();
+        tagsList = (json['tags'] as String).split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
       }
     }
     
     // Handle images array
     List<String>? imagesList;
     if (json['images'] != null && json['images'] is List) {
-      imagesList = (json['images'] as List).map((e) => e.toString()).toList();
+      imagesList = (json['images'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
     }
     
-    return ProductModel(
-      id: json['_id'] ?? json['id'] ?? '',
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      imageUrl: json['image'] ?? json['imageUrl'] ?? '',
+    // Safely parse rating
+    double? rating;
+    if (json['ratingAverage'] != null) {
+      rating = safeToDouble(json['ratingAverage']);
+    } else if (json['rating'] != null) {
+      rating = safeToDouble(json['rating']);
+    }
+    
+    // Safely parse review count
+    int? reviewCount;
+    if (json['ratingCount'] != null) {
+      reviewCount = safeToInt(json['ratingCount']);
+    } else if (json['reviewCount'] != null) {
+      reviewCount = safeToInt(json['reviewCount']);
+    }
+    
+    final courierCharge = safeToDouble(json['courierCharge'] ?? json['deliveryCharge'], 0.0);
+    debugPrint('[ProductModel.fromJsonMap] Courier/Delivery Charge: $courierCharge');
+    
+    final result = ProductModel(
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      imageUrl: json['image']?.toString() ?? json['imageUrl']?.toString() ?? '',
       unitPrice: price,
       discountPrice: discountPrice,
-      availableQuantity: json['quantity'] ?? json['availableQuantity'] ?? json['stock'] ?? 0,
-      deliveryCharge: (json['deliveryCharge'] ?? 0).toDouble(),
-      categoryId: json['categoryId'] ?? json['category'] ?? '',
-      isFlashSale: json['isFlashSale'] ?? false,
+      availableQuantity: safeToInt(json['quantity'] ?? json['availableQuantity'] ?? json['stock'], 0),
+      deliveryCharge: courierCharge, // Support both courierCharge and deliveryCharge
+      categoryId: json['categoryId']?.toString() ?? json['category']?.toString() ?? '',
+      isFlashSale: json['isFlashSale'] == true || json['isFlashSale'] == 1,
       flashSaleEndDate: json['flashSaleEndDate'] != null
-          ? DateTime.parse(json['flashSaleEndDate'])
+          ? DateTime.tryParse(json['flashSaleEndDate'].toString())
           : null,
-      rating: json['ratingAverage'] != null 
-          ? (json['ratingAverage'] as num).toDouble() 
-          : (json['rating'] != null ? (json['rating'] as num).toDouble() : null),
-      reviewCount: json['ratingCount'] ?? json['reviewCount'],
-      sku: json['sku'],
-      brand: json['brand'],
+      rating: rating,
+      reviewCount: reviewCount,
+      sku: json['sku']?.toString(),
+      brand: json['brand']?.toString(),
       tags: tagsList,
       images: imagesList,
-      isAvailable: json['isAvailable'] ?? true,
-      isFeatured: json['isFeatured'] ?? false,
+      isAvailable: json['isAvailable'] != false && json['isAvailable'] != 0,
+      isFeatured: json['isFeatured'] == true || json['isFeatured'] == 1,
     );
+    
+    debugPrint('[ProductModel.fromJsonMap] ✓ Product parsed successfully');
+    debugPrint('[ProductModel.fromJsonMap] Final Price: ${result.unitPrice}');
+    debugPrint('[ProductModel.fromJsonMap] Discount Price: ${result.discountPrice}');
+    debugPrint('[ProductModel.fromJsonMap] Delivery Charge: ${result.deliveryCharge}');
+    debugPrint('[ProductModel.fromJsonMap] Quantity: ${result.availableQuantity}');
+    debugPrint('[ProductModel.fromJsonMap] Rating: ${result.rating}');
+    debugPrint('[ProductModel.fromJsonMap] ========== PARSING COMPLETE ==========');
+    
+    return result;
   }
 
   ProductModel copyWith({

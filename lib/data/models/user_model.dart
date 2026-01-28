@@ -68,7 +68,7 @@ class UserModel implements BaseModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : null,
-      mobile: json['mobile'],
+      mobile: json['phone'] ?? json['mobile'], // Support both 'phone' and 'mobile' fields
       profileImage: json['profilePicture'] ?? json['profileImage'],
     );
   }

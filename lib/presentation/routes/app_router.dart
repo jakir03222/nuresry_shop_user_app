@@ -28,6 +28,7 @@ import '../screens/address/shipping_address_screen.dart';
 import '../screens/order/order_history_screen.dart';
 import '../screens/wishlist/wishlist_screen.dart';
 import '../screens/product/product_search_screen.dart';
+import '../screens/product/all_products_screen.dart';
 import '../providers/product_provider.dart';
 import '../../core/services/storage_service.dart';
 
@@ -55,7 +56,7 @@ class AppRouter {
 
         // Allow access to home and public pages even if not authenticated
         // Only redirect to login for protected pages (profile, settings, etc.)
-        final protectedPages = ['/profile', '/edit-profile', '/settings', '/change-password', '/coupons', '/cart', '/checkout', '/shipping-address', '/order-history', '/wishlist', '/contact-us'];
+        final protectedPages = ['/profile', '/edit-profile', '/settings', '/change-password', '/coupons', '/cart', '/checkout', '/shipping-address', '/order-history', '/wishlist', '/contact-us', '/all-products'];
         if (!isAuthenticated && protectedPages.contains(state.uri.path)) {
           return '/splash';
         }
@@ -205,6 +206,11 @@ class AppRouter {
         path: '/product-search',
         name: 'product-search',
         builder: (context, state) => const ProductSearchScreen(),
+      ),
+      GoRoute(
+        path: '/all-products',
+        name: 'all-products',
+        builder: (context, state) => const AllProductsScreen(),
       ),
       GoRoute(
         path: '/flash-sale/:id',

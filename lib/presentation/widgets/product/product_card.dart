@@ -163,29 +163,60 @@ class ProductCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.max,
                   children: [
+                    // Product Name (Title)
                     Flexible(
+                      fit: FlexFit.loose,
                       child: Text(
                         product.name,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
+                          height: 1.2,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      product.description,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
+                    // Tags - Show below title
+                    if (product.tags != null && product.tags!.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: Wrap(
+                          spacing: 3,
+                          runSpacing: 2,
+                          children: product.tags!
+                              .take(2)
+                              .map(
+                                (tag) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                      color: AppColors.primary.withOpacity(0.2),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
+                    ],
+                    const Spacer(flex: 1),
                     // Price Section
                     Row(
                       children: [
@@ -213,7 +244,7 @@ class ProductCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     // Stock and Rating
                     Row(
                       children: [
@@ -255,7 +286,7 @@ class ProductCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 6),
                     // Add to Cart Button
                     Consumer<CartProvider>(
                       builder: (context, cartProvider, child) {

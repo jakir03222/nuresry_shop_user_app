@@ -46,6 +46,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
+    // Validate that at least email or phone is provided
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    
+    if (email.isEmpty && phone.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please provide either email or phone number'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+    
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
       
@@ -56,8 +73,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.signUp(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
+        email: email.isNotEmpty ? email : null,
+        phone: phone.isNotEmpty ? phone : null,
         password: _passwordController.text,
         profileImage: null,
       );
@@ -72,14 +89,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             SnackBar(
               content: Text(
                 authProvider.successMessage ?? 
-                'Account created successfully! Please verify your email.',
+                'Account created successfully! You can now login.',
               ),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
             ),
           );
-          context.push('/otp-verification?email=${Uri.encodeComponent(_emailController.text.trim())}');
+          // Redirect to login screen after successful registration
+          context.go('/login');
         }
       } else {
         if (context.mounted) {
@@ -249,12 +267,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 8),
                           // Subtitle
                           Text(
-                            'Create your new account',
+                            'Create your new account\n(Email or Phone required)',
                             style: TextStyle(
                               fontSize: 16,
                               color: AppColors.plantMediumGreen.withOpacity(0.8),
                               fontWeight: FontWeight.w500,
                             ),
+                            textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 32),
                           // Full Name field
@@ -265,23 +284,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: Validators.validateName,
                           ),
                           const SizedBox(height: 20),
-                          // Email field
+                          // Email field (optional)
                           _buildInputField(
                             controller: _emailController,
-                            hintText: 'user@mail.com',
+                            hintText: 'Email (Optional)',
                             prefixIcon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
-                            validator: Validators.validateEmail,
+                            validator: (value) {
+                              // Only validate if value is provided
+                              if (value != null && value.isNotEmpty) {
+                                return Validators.validateEmail(value);
+                              }
+                              return null;
+                            },
                             showCheckmark: true,
                           ),
                           const SizedBox(height: 20),
-                          // Phone field
+                          // Phone field (optional)
                           _buildInputField(
                             controller: _phoneController,
-                            hintText: 'Phone Number',
+                            hintText: 'Phone Number (Optional)',
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
-                            validator: Validators.validateMobile,
+                            validator: (value) {
+                              // Only validate if value is provided
+                              if (value != null && value.isNotEmpty) {
+                                return Validators.validateMobile(value);
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          // Info text
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: Text(
+                              'Note: At least one of email or phone is required',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.plantMediumGreen.withOpacity(0.7),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 20),
                           // Password field

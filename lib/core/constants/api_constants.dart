@@ -14,6 +14,7 @@ class ApiConstants {
 
   // Category Endpoints
   static const String categories = '/categories';
+  static String categoryById(String categoryId) => '/categories/$categoryId';
 
   // Flash Sale Endpoints
   static String flashSalesActive({int page = 1, int limit = 100}) {
@@ -24,6 +25,8 @@ class ApiConstants {
 
   // Product Endpoints
   static const String products = '/products';
+  static String allProducts({int page = 1, int limit = 1000}) =>
+      '/products?page=$page&limit=$limit';
   static String productById(String productId) => '/products/$productId';
   static String productsByFlashSale(String saleId) =>
       '/products?flashSale=$saleId';
@@ -36,12 +39,16 @@ class ApiConstants {
   }
   static String productsByTags({
     String? tags,
+    String? searchTerm,
     int page = 1,
     int limit = 10,
   }) {
     var queryParams = <String>[];
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      queryParams.add('searchTerm=${Uri.encodeComponent(searchTerm)}');
+    }
     if (tags != null && tags.isNotEmpty) {
-      queryParams.add('tags=$tags');
+      queryParams.add('tags=${Uri.encodeComponent(tags)}');
     }
     queryParams.add('page=$page');
     queryParams.add('limit=$limit');
