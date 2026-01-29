@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../core/services/storage_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/favorite_provider.dart';
@@ -21,25 +21,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // When Profile tab is selected / screen opens: call GET {{baseUrl}}/users/profile and show API data in UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _loadProfile();
-      }
+      if (mounted) _loadProfile();
     });
   }
 
+  /// Calls GET {{baseUrl}}/users/profile and updates UI with response data (name, emailOrPhone, avatarId.imageUrl/profilePicture, role, status).
   Future<void> _loadProfile() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (!authProvider.isAuthenticated) return;
-
-    // Load from cache first for instant display
-    setState(() => _isLoadingProfile = false);
-    
-    // Then sync with API in background
+    if (!authProvider.isAuthenticated) {
+      if (mounted) setState(() => _isLoadingProfile = false);
+      return;
+    }
+    if (mounted) setState(() => _isLoadingProfile = true);
     try {
-      await authProvider.loadProfile(forceRefresh: false);
+      await authProvider.loadProfile(forceRefresh: true);
     } catch (_) {}
-    
     if (mounted) setState(() => _isLoadingProfile = false);
   }
 
@@ -125,172 +123,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     }
                     
+                    // API response data: name, emailOrPhone, profilePicture | avatarId.imageUrl, role, status
                     return Column(
                       children: [
-                        // Profile Header (API data)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(24),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primaryBlue,
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(30),
-                              bottomRight: Radius.circular(30),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              // Profile Picture - Uses Consumer for live updates
-                              Consumer<AuthProvider>(
-                                builder: (context, authProvider, _) {
-                                  final currentUser = authProvider.user;
-                                  return Container(
-                                    width: 100,
-                                    height: 100,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: AppColors.backgroundWhite,
-                                      border: Border.all(
-                                        color: AppColors.textWhite,
-                                        width: 4,
-                                      ),
-                                    ),
-                                    child: ClipOval(
-                                      child: currentUser?.profileImage != null &&
-                                              currentUser!.profileImage!.isNotEmpty
-                                          ? CachedNetworkImage(
-                                              imageUrl: currentUser.profileImage!,
-                                              fit: BoxFit.cover,
-                                              width: 100,
-                                              height: 100,
-                                              placeholder: (context, url) => Container(
-                                                width: 100,
-                                                height: 100,
-                                                color: AppColors.backgroundWhite,
-                                                child: const Center(
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                                      AppColors.primaryBlue,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              errorWidget: (context, url, error) => Container(
-                                                width: 100,
-                                                height: 100,
-                                                color: AppColors.backgroundWhite,
-                                                child: const Icon(
-                                                  Icons.person,
-                                                  size: 50,
-                                                  color: AppColors.primaryBlue,
-                                                ),
-                                              ),
-                                            )
-                                          : Container(
-                                              width: 100,
-                                              height: 100,
-                                              color: AppColors.backgroundWhite,
-                                              child: const Icon(
-                                                Icons.person,
-                                                size: 50,
-                                                color: AppColors.primaryBlue,
-                                              ),
-                                            ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              // Name
-                              Text(
-                                user?.name ?? 'Guest User',
-                                style: const TextStyle(
-                                  color: AppColors.textWhite,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              // Email
-                              Text(
-                                user?.email ?? 'guest@example.com',
-                                style: const TextStyle(
-                                  color: AppColors.textWhite,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              // Mobile (if available)
-                              if (user?.mobile != null &&
-                                  user!.mobile!.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  user.mobile!,
-                                  style: const TextStyle(
-                                    color: AppColors.textWhite,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                              // Role and Status badges
-                              if (user != null) ...[
-                                const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Color.lerp(
-                                          AppColors.textWhite,
-                                          Colors.transparent,
-                                          0.8,
-                                        )!,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        user.role.toUpperCase(),
-                                        style: const TextStyle(
-                                          color: AppColors.textWhite,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Color.lerp(
-                                          user.status == 'active'
-                                              ? AppColors.success
-                                              : AppColors.error,
-                                          Colors.transparent,
-                                          0.8,
-                                        )!,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        user.status.toUpperCase(),
-                                        style: const TextStyle(
-                                          color: AppColors.textWhite,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
+                        // Profile Header – GET {{baseUrl}}/users/profile data
+                    
+                    
+                    
                         const SizedBox(height: 24),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -323,6 +162,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 title: 'Order History',
                                 onTap: () => context.push('/order-history'),
                               ),
+                         
+                            
                               const SizedBox(height: 12),
                               _buildProfileOption(
                                 context,
@@ -354,6 +195,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              context.go('/home');
+              break;
+            case 1:
+              context.go('/cart');
+              break;
+            case 2:
+              break;
+          }
+        },
+        selectedItemColor: AppColors.primaryBlue,
+        unselectedItemColor: AppColors.textSecondary,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: AppStrings.home,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart),
+            label: AppStrings.cart,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: AppStrings.profile,
+          ),
+        ],
+      ),
     );
   }
 

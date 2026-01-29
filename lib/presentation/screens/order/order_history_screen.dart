@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,14 @@ class OrderHistoryScreen extends StatefulWidget {
 
   @override
   State<OrderHistoryScreen> createState() => _OrderHistoryScreenState();
+}
+
+/// 6-hour cancellation window: user can cancel only within 6 hours of order creation.
+const _cancelWindow = Duration(hours: 6);
+
+bool _canCancelOrder(OrderModel order) {
+  if (order.orderStatus.toLowerCase() == 'cancelled') return false;
+  return DateTime.now().difference(order.createdAt) <= _cancelWindow;
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
@@ -43,6 +52,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   String _statusLabel(String status) {
     if (status == 'all' || status.isEmpty) return 'All';
+    if (status.toLowerCase() == 'delivered') return 'Completed';
     return status[0].toUpperCase() + status.substring(1);
   }
 
@@ -230,6 +240,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                           order,
                           orderProvider,
                         ),
+                        onCancelOrder: () => _confirmAndCancelOrder(
+                          context,
+                          order,
+                          orderProvider,
+                        ),
                       );
                     },
                   ),
@@ -256,6 +271,71 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         );
       },
     );
+  }
+
+  Future<void> _confirmAndCancelOrder(
+    BuildContext context,
+    OrderModel order,
+    OrderProvider orderProvider,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Order?'),
+        content: Text(
+          'Are you sure you want to cancel order ${order.orderId}? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.textWhite,
+            ),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || confirmed != true) return;
+    try {
+      final response = await orderProvider.cancelOrder(order.orderId);
+      if (!context.mounted) return;
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] as String? ?? 'Order cancelled',
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] as String? ?? 'Cannot cancel order',
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 
@@ -671,12 +751,13 @@ class _TransactionDialogState extends State<_TransactionDialog> {
   }
 }
 
-class _OrderCard extends StatelessWidget {
+class _OrderCard extends StatefulWidget {
   final OrderModel order;
   final NumberFormat priceFormat;
   final DateFormat dateFormat;
   final Color statusColor;
   final VoidCallback? onCompletePayment;
+  final VoidCallback? onCancelOrder;
 
   const _OrderCard({
     required this.order,
@@ -684,14 +765,99 @@ class _OrderCard extends StatelessWidget {
     required this.dateFormat,
     required this.statusColor,
     this.onCompletePayment,
+    this.onCancelOrder,
   });
 
   @override
+  State<_OrderCard> createState() => _OrderCardState();
+}
+
+class _OrderCardState extends State<_OrderCard> {
+  Timer? _cancelButtonHideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_canCancelOrder(widget.order) && widget.onCancelOrder != null) {
+      final deadline = widget.order.createdAt.add(_cancelWindow);
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining > Duration.zero) {
+        _cancelButtonHideTimer = Timer(remaining, () {
+          if (mounted) setState(() {});
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelButtonHideTimer?.cancel();
+    super.dispose();
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final order = widget.order;
     final s = order.orderStatus;
     final status = s.isEmpty
         ? 'Pending'
-        : s[0].toUpperCase() + s.substring(1).toLowerCase();
+        : s.toLowerCase() == 'delivered'
+            ? 'Completed'
+            : s[0].toUpperCase() + s.substring(1).toLowerCase();
+    final canCancelWithin6Hours = _canCancelOrder(order);
+    final showCancelButton = order.orderStatus.toLowerCase() != 'cancelled' && widget.onCancelOrder != null;
+
+    final paymentStatusLabel = order.paymentStatus.isEmpty
+        ? 'Pending'
+        : order.paymentStatus[0].toUpperCase() +
+            order.paymentStatus.substring(1).toLowerCase();
+    final paymentMethodLabel = order.paymentMethod.isEmpty
+        ? '-'
+        : order.paymentMethod.toUpperCase();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -704,6 +870,7 @@ class _OrderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Order ID & Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -720,7 +887,7 @@ class _OrderCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Color.lerp(
-                    statusColor,
+                    widget.statusColor,
                     AppColors.backgroundWhite,
                     0.85,
                   ),
@@ -731,47 +898,74 @@ class _OrderCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: statusColor,
+                    color: widget.statusColor,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            dateFormat.format(order.createdAt),
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          // Created & Updated
+          _detailRow('Created', widget.dateFormat.format(order.createdAt)),
+          _detailRow('Updated', widget.dateFormat.format(order.updatedAt)),
+          const SizedBox(height: 10),
+          // Payment info
+          _sectionTitle('Payment'),
+          _detailRow('Payment status', paymentStatusLabel),
+          _detailRow('Payment method', paymentMethodLabel),
+          const SizedBox(height: 10),
+          // Shipping address
+          _sectionTitle('Shipping address'),
           Text(
             order.shippingAddress.fullAddress,
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
+          if (order.billingAddress != null) ...[
+            const SizedBox(height: 8),
+            _sectionTitle('Billing address'),
+            Text(
+              order.billingAddress!.fullAddress,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
+          // Items
+          _sectionTitle('Items'),
           ...order.items.map((item) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      '${item.name} × ${item.quantity}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '${item.quantity} × ${widget.priceFormat.format(item.price)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Text(
-                    priceFormat.format(item.total),
+                    widget.priceFormat.format(item.total),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -782,7 +976,16 @@ class _OrderCard extends StatelessWidget {
               ),
             );
           }),
-          const Divider(height: 20),
+          const Divider(height: 24),
+          // Totals
+          _sectionTitle('Summary'),
+          _detailRow('Subtotal', widget.priceFormat.format(order.subtotal)),
+          if (order.tax > 0) _detailRow('Tax', widget.priceFormat.format(order.tax)),
+          if (order.shippingCost > 0)
+            _detailRow('Shipping', widget.priceFormat.format(order.shippingCost)),
+          if (order.discountAmount > 0)
+            _detailRow('Discount', '-${widget.priceFormat.format(order.discountAmount)}'),
+          const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -795,7 +998,7 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
               Text(
-                priceFormat.format(order.total),
+                widget.priceFormat.format(order.total),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -804,15 +1007,16 @@ class _OrderCard extends StatelessWidget {
               ),
             ],
           ),
-          // Complete Payment Button (for pending orders)
+          // Complete Payment Button: only for non-COD (online) pending orders; COD is paid on delivery
           if (order.paymentStatus.toLowerCase() == 'pending' &&
               order.orderStatus.toLowerCase() != 'cancelled' &&
-              onCompletePayment != null) ...[
+              order.paymentMethod.toLowerCase() != 'cod' &&
+              widget.onCompletePayment != null) ...[
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: onCompletePayment,
+                onPressed: widget.onCompletePayment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success,
                   foregroundColor: AppColors.textWhite,
@@ -833,6 +1037,55 @@ class _OrderCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          // Cancel Order: enabled only within 6 hours of creation; disabled after 6 hours
+          if (showCancelButton) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: canCancelWithin6Hours ? widget.onCancelOrder : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: canCancelWithin6Hours ? AppColors.error : AppColors.textSecondary,
+                  side: BorderSide(
+                    color: canCancelWithin6Hours ? AppColors.error : AppColors.borderGrey,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.cancel_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Cancel Order',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (!canCancelWithin6Hours) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Cancel allowed within 6 hours of order',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

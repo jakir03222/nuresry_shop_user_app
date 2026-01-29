@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/validators.dart';
 import '../../providers/address_provider.dart';
 import '../../../data/models/address_model.dart';
 
@@ -29,9 +30,13 @@ class _AddEditAddressDialogState extends State<AddEditAddressDialog> {
       _streetController.text = widget.address!.street;
       _cityController.text = widget.address!.city;
       _postalCodeController.text = widget.address!.postalCode;
-      _countryController.text = widget.address!.country;
+      _countryController.text = widget.address!.country.isNotEmpty
+          ? widget.address!.country
+          : 'Bangladesh';
       _phoneController.text = widget.address!.phoneNumber;
       _isDefault = widget.address!.isDefault;
+    } else {
+      _countryController.text = 'Bangladesh';
     }
   }
 
@@ -145,14 +150,14 @@ class _AddEditAddressDialogState extends State<AddEditAddressDialog> {
                       TextFormField(
                         controller: _streetController,
                         decoration: const InputDecoration(
-                          labelText: 'Street Address',
-                          hintText: '123 Main Street, Apt 4B',
+                          labelText: 'House / Road / Area',
+                          hintText: 'House no, Road no, Area (e.g. Dhanmondi)',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.location_on),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter street address';
+                            return 'Please enter house, road or area';
                           }
                           return null;
                         },
@@ -161,14 +166,14 @@ class _AddEditAddressDialogState extends State<AddEditAddressDialog> {
                       TextFormField(
                         controller: _cityController,
                         decoration: const InputDecoration(
-                          labelText: 'City',
-                          hintText: 'Dhaka',
+                          labelText: 'District / City',
+                          hintText: 'Dhaka, Chittagong, Sylhet, Rajshahi...',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.location_city),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter city';
+                            return 'Please enter district or city';
                           }
                           return null;
                         },
@@ -178,16 +183,13 @@ class _AddEditAddressDialogState extends State<AddEditAddressDialog> {
                         controller: _postalCodeController,
                         decoration: const InputDecoration(
                           labelText: 'Postal Code',
-                          hintText: '1212',
+                          hintText: '1212 (4 digits)',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.markunread_mailbox),
                         ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter postal code';
-                          }
-                          return null;
-                        },
+                        keyboardType: TextInputType.number,
+                        maxLength: 4,
+                        validator: Validators.validateBangladeshPostalCode,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -209,18 +211,14 @@ class _AddEditAddressDialogState extends State<AddEditAddressDialog> {
                       TextFormField(
                         controller: _phoneController,
                         decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          hintText: '01712345678',
+                          labelText: 'Mobile Number',
+                          hintText: '01XXXXXXXXX (11 digits)',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.phone),
                         ),
                         keyboardType: TextInputType.phone,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter phone number';
-                          }
-                          return null;
-                        },
+                        maxLength: 11,
+                        validator: Validators.validateMobile,
                       ),
                       const SizedBox(height: 16),
                       CheckboxListTile(

@@ -21,6 +21,9 @@ class ProductModel implements BaseModel {
   final List<String>? images;
   final bool isAvailable;
   final bool isFeatured;
+  final String? deliveryTime;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   ProductModel({
     required this.id,
@@ -42,6 +45,9 @@ class ProductModel implements BaseModel {
     this.images,
     this.isAvailable = true,
     this.isFeatured = false,
+    this.deliveryTime,
+    this.createdAt,
+    this.updatedAt,
   });
 
   double get finalPrice => discountPrice ?? unitPrice;
@@ -184,6 +190,13 @@ class ProductModel implements BaseModel {
       images: imagesList,
       isAvailable: json['isAvailable'] != false && json['isAvailable'] != 0,
       isFeatured: json['isFeatured'] == true || json['isFeatured'] == 1,
+      deliveryTime: json['deliveryTime']?.toString(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString())
+          : null,
     );
     
     debugPrint('[ProductModel.fromJsonMap] ✓ Product parsed successfully');
@@ -217,6 +230,9 @@ class ProductModel implements BaseModel {
     List<String>? images,
     bool? isAvailable,
     bool? isFeatured,
+    String? deliveryTime,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -238,6 +254,9 @@ class ProductModel implements BaseModel {
       images: images ?? this.images,
       isAvailable: isAvailable ?? this.isAvailable,
       isFeatured: isFeatured ?? this.isFeatured,
+      deliveryTime: deliveryTime ?? this.deliveryTime,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

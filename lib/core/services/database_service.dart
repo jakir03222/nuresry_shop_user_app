@@ -1016,6 +1016,44 @@ class DatabaseService {
     }).toList();
   }
 
+  /// Update order status in SQLite (e.g. cancelled). Keeps cache in sync so Cancelled tab shows correct list.
+  static Future<void> updateOrderStatus(
+    String orderId,
+    String orderStatus, {
+    DateTime? updatedAt,
+  }) async {
+    try {
+      final db = await database;
+      final rows = await db.query(
+        tableOrders,
+        where: 'orderId = ?',
+        whereArgs: [orderId],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+      final dataStr = rows.first['data'] as String?;
+      if (dataStr == null || dataStr.isEmpty) return;
+      final data = jsonDecode(dataStr) as Map<String, dynamic>;
+      final now = updatedAt ?? DateTime.now();
+      data['orderStatus'] = orderStatus;
+      data['updatedAt'] = now.toIso8601String();
+      await db.update(
+        tableOrders,
+        {
+          'orderStatus': orderStatus,
+          'updatedAt': now.toIso8601String(),
+          'data': jsonEncode(data),
+          'lastSynced': _getCurrentTimestamp(),
+        },
+        where: 'orderId = ?',
+        whereArgs: [orderId],
+      );
+      debugPrint('[DatabaseService] Updated order $orderId status to $orderStatus in cache');
+    } catch (e) {
+      debugPrint('[DatabaseService] Error updating order status: $e');
+    }
+  }
+
   // ========== Addresses ==========
   static Future<void> saveAddresses(List<Map<String, dynamic>> addresses) async {
     final db = await database;

@@ -212,15 +212,11 @@ class _CartScreenState extends State<CartScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Checkout Button
+                    // Proceed to Checkout button (never shows loading)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: cartProvider.isLoading
-                            ? null
-                            : () {
-                                context.push('/checkout');
-                              },
+                        onPressed: () => context.push('/checkout'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           foregroundColor: AppColors.textWhite,
@@ -229,24 +225,13 @@ class _CartScreenState extends State<CartScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: cartProvider.isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppColors.textWhite,
-                                  ),
-                                ),
-                              )
-                            : const Text(
-                                'Proceed to Checkout',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                        child: const Text(
+                          'Proceed to Checkout',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -266,6 +251,9 @@ class _CartScreenState extends State<CartScreen> {
     NumberFormat priceFormat,
   ) {
     final product = cartItem.product;
+    final maxQty = product.availableQuantity > 0
+        ? product.availableQuantity
+        : 999;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -390,7 +378,7 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.add, size: 18),
-                              onPressed: cartItem.quantity < product.availableQuantity
+                              onPressed: cartItem.quantity < maxQty
                                   ? () {
                                       cartProvider.updateQuantity(
                                         product.id,

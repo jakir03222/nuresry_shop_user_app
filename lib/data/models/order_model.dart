@@ -133,4 +133,29 @@ class OrderModel {
           : DateTime.now(),
     );
   }
+
+  /// Copy with updated fields (e.g. for live status change to cancelled).
+  OrderModel copyWith({
+    String? orderStatus,
+    DateTime? updatedAt,
+  }) {
+    return OrderModel(
+      id: id,
+      orderId: orderId,
+      userId: userId,
+      shippingAddress: shippingAddress,
+      billingAddress: billingAddress,
+      items: items,
+      orderStatus: orderStatus ?? this.orderStatus,
+      paymentStatus: paymentStatus,
+      paymentMethod: paymentMethod,
+      subtotal: subtotal,
+      tax: tax,
+      shippingCost: shippingCost,
+      total: total,
+      discountAmount: discountAmount,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }

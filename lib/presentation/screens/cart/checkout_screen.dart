@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/database_service.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/models/payment_method_model.dart';
 import '../../providers/cart_provider.dart';
@@ -20,74 +21,96 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   AddressModel? _selectedAddress;
   PaymentMethodModel? _selectedPaymentMethod;
+  /// When Online Banking is selected, methods from API (GET /payment-methods).
+  List<PaymentMethodModel> _onlineBankingMethods = [];
+  PaymentMethodModel? _selectedOnlineBankingMethod;
+  bool _isLoadingOnlineBanking = false;
+  String? _onlineBankingError;
   final TextEditingController _notesController = TextEditingController();
   bool _isSubmitting = false;
-  bool _isLoadingPaymentMethods = false;
   List<PaymentMethodModel> _paymentMethods = [];
-  String? _paymentMethodError;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final addressProvider = Provider.of<AddressProvider>(context, listen: false);
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      
-      // Load addresses, cart, and payment methods
-      addressProvider.loadAddresses();
+      // Load addresses first, then set default address selected
+      await addressProvider.loadAddresses();
+      if (mounted && addressProvider.defaultAddress != null) {
+        setState(() {
+          _selectedAddress = addressProvider.defaultAddress;
+        });
+      }
+      if (!mounted) return;
       cartProvider.fetchCart();
-      _loadPaymentMethods();
-      
-      // Set default address if available
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && addressProvider.defaultAddress != null) {
-          setState(() {
-            _selectedAddress = addressProvider.defaultAddress;
-          });
+      // Cash on Delivery and Online Banking on same screen (checkbox options)
+      setState(() {
+        _paymentMethods = _checkoutPaymentOptions;
+        if (_paymentMethods.isNotEmpty) {
+          _selectedPaymentMethod = _paymentMethods.first;
         }
       });
     });
   }
 
-  Future<void> _loadPaymentMethods() async {
-    setState(() {
-      _isLoadingPaymentMethods = true;
-      _paymentMethodError = null;
-    });
+  /// Checkout screen: Cash on Delivery and Online Banking (same screen checkbox/radio options).
+  static List<PaymentMethodModel> get _checkoutPaymentOptions => [
+        PaymentMethodModel(
+          id: 'cod',
+          methodName: 'Cash on Delivery',
+          accountNumber: '',
+          isActive: true,
+          displayOrder: 0,
+        ),
+        PaymentMethodModel(
+          id: 'bkash',
+          methodName: 'Online Banking',
+          accountNumber: '',
+          isActive: true,
+          displayOrder: 1,
+        ),
+      ];
 
+
+  /// Load payment methods from API (GET {{baseUrl}}/payment-methods) when Online Banking is selected.
+  Future<void> _loadOnlineBankingMethods() async {
+    setState(() {
+      _isLoadingOnlineBanking = true;
+      _onlineBankingError = null;
+      _selectedOnlineBankingMethod = null;
+    });
     try {
       final response = await ApiService.getPaymentMethods();
-
+      if (!mounted) return;
       if (response['success'] == true && response['data'] != null) {
         final data = response['data'] as List<dynamic>;
-        final paymentMethods = data
+        final methods = data
             .map((json) => PaymentMethodModel.fromJson(json as Map<String, dynamic>))
-            .where((method) => method.isActive) // Only show active payment methods
+            .where((m) => m.isActive)
             .toList();
-        
-        // Sort by displayOrder
-        paymentMethods.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
-
+        methods.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
         setState(() {
-          _paymentMethods = paymentMethods;
-          // Select first payment method by default
-          if (paymentMethods.isNotEmpty) {
-            _selectedPaymentMethod = paymentMethods.first;
-          }
+          _onlineBankingMethods = methods;
+          _isLoadingOnlineBanking = false;
+          _onlineBankingError = null;
+          if (methods.isNotEmpty) _selectedOnlineBankingMethod = methods.first;
         });
       } else {
         setState(() {
-          _paymentMethodError = response['message'] as String? ?? 'Failed to load payment methods';
+          _onlineBankingMethods = [];
+          _isLoadingOnlineBanking = false;
+          _onlineBankingError = response['message'] as String? ?? 'Failed to load payment methods';
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _paymentMethodError = e.toString().replaceAll('Exception: ', '');
-      });
-    } finally {
-      setState(() {
-        _isLoadingPaymentMethods = false;
+        _onlineBankingMethods = [];
+        _isLoadingOnlineBanking = false;
+        _onlineBankingError = e.toString().replaceAll('Exception: ', '');
       });
     }
   }
@@ -96,6 +119,63 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void dispose() {
     _notesController.dispose();
     super.dispose();
+  }
+
+  /// True if payment is Cash on Delivery (no transaction ID needed).
+  bool _isCashOnDelivery(PaymentMethodModel method) {
+    final name = method.methodName.toLowerCase();
+    return name == 'cod' ||
+        name == 'cash on delivery' ||
+        name.contains('cash on delivery') ||
+        name.contains('cod');
+  }
+
+  /// Shows dialog to enter transaction ID for online payment (bkash, nagad, rocket).
+  /// Returns transaction ID string or null if cancelled / empty.
+  Future<String?> _showTransactionIdDialog(BuildContext context) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Enter ${_selectedOnlineBankingMethod?.methodName ?? _selectedPaymentMethod?.methodName ?? 'Payment'} Transaction ID'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'e.g. TXN123456789',
+              labelText: 'Transaction ID',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final id = controller.text.trim();
+                if (id.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter transaction ID'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.of(ctx).pop(id);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _handlePlaceOrder() async {
@@ -121,6 +201,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    // When Online Banking selected, user must pick one method from API (bKash etc.)
+    if (!_isCashOnDelivery(_selectedPaymentMethod!) &&
+        (_selectedOnlineBankingMethod == null || _onlineBankingMethods.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a payment method (e.g. bKash) or wait for list to load'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     
     if (cartProvider.items.isEmpty) {
@@ -134,6 +227,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    // For online payment (bkash, nagad, rocket): get transaction ID from user
+    String? transactionId;
+    if (!_isCashOnDelivery(_selectedPaymentMethod!)) {
+      transactionId = await _showTransactionIdDialog(context);
+      if (transactionId == null || transactionId.trim().isEmpty) {
+        return; // User cancelled or left empty
+      }
+      if (!mounted) return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
@@ -141,25 +244,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       // Get selected product IDs from cart
       final selectedProductIds = cartProvider.items.map((item) => item.product.id).toList();
+      final paymentMethodKey = _isCashOnDelivery(_selectedPaymentMethod!)
+          ? 'cod'
+          : _selectedOnlineBankingMethod!.methodName.toLowerCase();
 
       final response = await ApiService.createOrder(
         shippingAddressId: _selectedAddress!.id,
         selectedProductIds: selectedProductIds,
-        paymentMethod: _selectedPaymentMethod!.methodName.toLowerCase(),
+        paymentMethod: paymentMethodKey,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        transactionId: transactionId,
+        discountCode: null,
       );
 
       if (response['success'] == true) {
         if (context.mounted) {
-          // Clear cart after successful order via API DELETE /carts
-          // This will trigger live UI updates in cart screen
+          // Delete cart items after order: call DELETE {{baseUrl}}/carts/:productId for each product
           try {
-            await cartProvider.clearCart();
-            // Cart cleared successfully via API - UI will update automatically
-            debugPrint('Cart cleared successfully via API');
+            for (final productId in selectedProductIds) {
+              try {
+                await ApiService.removeCartItem(productId);
+              } catch (_) {
+                // Continue removing other items
+              }
+            }
+            cartProvider.clearCartData();
+            await DatabaseService.clearCart();
           } catch (e) {
-            // If cart clearing API fails, clear locally for immediate UI update
-            debugPrint('Cart API clear failed, clearing locally: $e');
+            debugPrint('Cart delete failed, clearing locally: $e');
             cartProvider.clearCartData();
           }
           
@@ -481,7 +593,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ),
                         )
                       else
-                        ...addressProvider.addresses.map((address) {
+                        ...[
+                          // Auto-select default address when list is shown and none selected
+                          Builder(
+                            builder: (_) {
+                              if (_selectedAddress == null &&
+                                  addressProvider.addresses.isNotEmpty) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (mounted && _selectedAddress == null) {
+                                    setState(() {
+                                      _selectedAddress =
+                                          addressProvider.defaultAddress;
+                                    });
+                                  }
+                                });
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                          ...addressProvider.addresses.map((address) {
                           final isSelected = _selectedAddress?.id == address.id;
                           return InkWell(
                             onTap: () {
@@ -563,6 +693,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           );
                         }),
+                        ],
                     ],
                   ),
                 ),
@@ -587,61 +718,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      if (_isLoadingPaymentMethods)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      else if (_paymentMethodError != null)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.error.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.error),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                _paymentMethodError!,
-                                style: const TextStyle(
-                                  color: AppColors.error,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextButton(
-                                onPressed: _loadPaymentMethods,
-                                child: const Text('Retry'),
-                              ),
-                            ],
-                          ),
-                        )
-                      else if (_paymentMethods.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundLight,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'No payment methods available',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        ..._paymentMethods.map((method) {
+                      // Cash on Delivery and Online Banking (checkbox/radio options on same screen)
+                      ..._paymentMethods.map((method) {
                           final isSelected = _selectedPaymentMethod?.id == method.id;
                           return InkWell(
                             onTap: () {
                               setState(() {
                                 _selectedPaymentMethod = method;
+                                if (method.id == 'bkash') {
+                                  _loadOnlineBankingMethods();
+                                } else {
+                                  _selectedOnlineBankingMethod = null;
+                                  _onlineBankingMethods = [];
+                                }
                               });
                             },
                             child: Container(
@@ -764,6 +853,131 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           );
                         }),
+                      // When Online Banking selected: show API payment methods (GET /payment-methods)
+                      if (_selectedPaymentMethod?.id == 'bkash') ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Select payment method',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_isLoadingOnlineBanking)
+                          const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator(color: AppColors.primaryBlue)),
+                          )
+                        else if (_onlineBankingError != null)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.error),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _onlineBankingError!,
+                                    style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: _loadOnlineBankingMethods,
+                                  child: const Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (_onlineBankingMethods.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              'No payment methods available',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                            ),
+                          )
+                        else
+                          ..._onlineBankingMethods.map((method) {
+                            final isSelected = _selectedOnlineBankingMethod?.id == method.id;
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _selectedOnlineBankingMethod = method;
+                                });
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppColors.primaryBlueLight.withOpacity(0.2)
+                                      : AppColors.backgroundLight,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.primaryBlue : AppColors.borderGrey,
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Radio<PaymentMethodModel>(
+                                      value: method,
+                                      groupValue: _selectedOnlineBankingMethod,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedOnlineBankingMethod = value;
+                                        });
+                                      },
+                                      activeColor: AppColors.primaryBlue,
+                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            method.methodName,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          if (method.accountNumber.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${method.accountNumber}${method.accountName != null ? " • ${method.accountName}" : ""}',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                          if (method.description != null && method.description!.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              method.description!,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                      ],
                     ],
                   ),
                 ),

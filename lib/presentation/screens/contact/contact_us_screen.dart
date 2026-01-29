@@ -18,6 +18,7 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
   @override
   void initState() {
     super.initState();
+    // GET {{baseUrl}}/contacts with Bearer token; response data (label, contactType, contactValue) shown below.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.isAuthenticated) {
@@ -70,9 +71,15 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
           },
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      body: Consumer<ContactProvider>(
+        builder: (context, contactProvider, _) {
+          return RefreshIndicator(
+            onRefresh: () => contactProvider.loadContacts(),
+            color: AppColors.primaryBlue,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Contact list from API
@@ -85,8 +92,8 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Consumer<ContactProvider>(
-              builder: (context, contactProvider, _) {
+            Builder(
+              builder: (context) {
                 if (contactProvider.isLoading &&
                     contactProvider.contacts.isEmpty) {
                   return const Center(
@@ -170,6 +177,9 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
             ),
           ],
         ),
+      ),
+          );
+        },
       ),
     );
   }

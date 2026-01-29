@@ -14,15 +14,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _rememberMe = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _emailOrPhoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -36,32 +35,10 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final identifier = _emailController.text.trim();
-      
-      // Determine if input is email or phone
-      final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(identifier);
-      final isPhone = RegExp(r'^\d{11}$').hasMatch(identifier);
-      
-      // Validate that at least one identifier is provided
-      if (!isEmail && !isPhone) {
-        setState(() {
-          _isLoading = false;
-        });
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please enter a valid email or 11-digit phone number'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return;
-      }
+      final identifier = _emailOrPhoneController.text.trim();
       
       final success = await authProvider.signIn(
-        email: isEmail ? identifier : null,
-        phone: isPhone ? identifier : null,
+        emailOrPhone: identifier,
         password: _passwordController.text,
       );
       
@@ -251,22 +228,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 32),
                           // Email or Phone field
                           _buildInputField(
-                            controller: _emailController,
+                            controller: _emailOrPhoneController,
                             hintText: 'Email or Phone',
                             prefixIcon: Icons.person_outline,
                             keyboardType: TextInputType.text,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Email or phone is required';
-                              }
-                              final trimmed = value.trim();
-                              final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(trimmed);
-                              final isPhone = RegExp(r'^\d{11}$').hasMatch(trimmed);
-                              if (!isEmail && !isPhone) {
-                                return 'Please enter a valid email or 11-digit phone number';
-                              }
-                              return null;
-                            },
+                            validator: Validators.validateEmailOrPhone,
                           ),
                           const SizedBox(height: 20),
                           // Password field
@@ -290,53 +256,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 });
                               },
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Remember Me and Forgot Password
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Checkbox(
-                                    value: _rememberMe,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _rememberMe = value ?? false;
-                                      });
-                                    },
-                                    activeColor: AppColors.plantMediumGreen,
-                                    checkColor: AppColors.textWhite,
-                                  ),
-                                  const Text(
-                                    'Remember Me',
-                                    style: TextStyle(
-                                      color: AppColors.plantDarkGreen,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  context.push('/forgot-password');
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: const Text(
-                                  'Forgot Password?',
-                                  style: TextStyle(
-                                    color: AppColors.plantDarkGreen,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                           const SizedBox(height: 32),
                           // Login button

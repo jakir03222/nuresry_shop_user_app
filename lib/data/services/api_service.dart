@@ -112,14 +112,12 @@ class ApiService {
   // Sign Up - supports either email or phone
   static Future<Map<String, dynamic>> signUp({
     required String name,
-    String? email,
-    String? phone,
+    required String emailOrPhone,
     required String password,
     File? profileImage,
   }) async {
-    // Validate that at least one identifier is provided
-    if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
-      throw Exception('Either email or phone is required');
+    if (emailOrPhone.trim().isEmpty) {
+      throw Exception('Email or phone is required');
     }
     
     try {
@@ -127,8 +125,7 @@ class ApiService {
       debugPrint('[signUp] API URL: $url');
       debugPrint('[signUp] Request Data:');
       debugPrint('  - name: $name');
-      debugPrint('  - email: ${email ?? 'not provided'}');
-      debugPrint('  - phone: ${phone ?? 'not provided'}');
+      debugPrint('  - emailOrPhone: $emailOrPhone');
       debugPrint('  - password: ${'*' * password.length}');
       debugPrint('  - role: user');
       debugPrint(
@@ -137,22 +134,18 @@ class ApiService {
 
       var request = http.MultipartRequest('POST', url);
 
-      // Add required fields
+      final headers = {
+        'Accept': 'application/json',
+      };
+      request.headers.addAll(headers);
+
+      // Add required fields: name, emailOrPhone, password, role
       request.fields.addAll({
         'name': name,
+        'emailOrPhone': emailOrPhone.trim(),
         'password': password,
-        'role': 'user', // Default role for user registration
+        'role': 'user', // use 'user' for app; server may accept 'admin'
       });
-      
-      // Add optional email if provided
-      if (email != null && email.isNotEmpty) {
-        request.fields['email'] = email;
-      }
-      
-      // Add optional phone if provided
-      if (phone != null && phone.isNotEmpty) {
-        request.fields['phone'] = phone;
-      }
 
       debugPrint('[signUp] Request fields: ${request.fields}');
 
@@ -226,24 +219,17 @@ class ApiService {
 
   // Login - supports both email and phone
   static Future<Map<String, dynamic>> login({
-    String? email,
-    String? phone,
+    required String emailOrPhone,
     required String password,
   }) async {
-    // Validate that at least one identifier is provided
-    if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
-      throw Exception('Either email or phone is required');
+    if (emailOrPhone.trim().isEmpty) {
+      throw Exception('Email or phone is required');
     }
     
-    final body = <String, dynamic>{'password': password};
-    
-    if (email != null && email.isNotEmpty) {
-      body['email'] = email;
-    }
-    
-    if (phone != null && phone.isNotEmpty) {
-      body['phone'] = phone;
-    }
+    final body = <String, dynamic>{
+      'emailOrPhone': emailOrPhone.trim(),
+      'password': password,
+    };
     
     return await _makeRequest(
       endpoint: ApiConstants.login,
@@ -400,12 +386,12 @@ class ApiService {
     );
   }
 
-  // Get Product by ID
+  /// GET {{baseUrl}}/products/:id – product detail (name, sku, description, image, images, price, discount, quantity, isAvailable, isFeatured, brand, categoryId, tags, deliveryTime, courierCharge, ratingAverage, ratingCount, createdAt, updatedAt)
   static Future<Map<String, dynamic>> getProductById(String productId) async {
     return await _makeRequest(
       endpoint: ApiConstants.productById(productId),
       method: 'GET',
-      requireAuth: true, // Require authentication token
+      requireAuth: true,
     );
   }
 
@@ -569,11 +555,14 @@ class ApiService {
   }
 
   // Create Order
+  // For COD: do not pass transactionId. For online (bkash, nagad, rocket): pass transactionId.
   static Future<Map<String, dynamic>> createOrder({
     required String shippingAddressId,
     required List<String> selectedProductIds,
     required String paymentMethod,
     String? notes,
+    String? transactionId,
+    String? discountCode,
   }) async {
     final body = <String, dynamic>{
       'shippingAddressId': shippingAddressId,
@@ -584,6 +573,12 @@ class ApiService {
     if (notes != null && notes.trim().isNotEmpty) {
       body['notes'] = notes.trim();
     }
+    if (transactionId != null && transactionId.trim().isNotEmpty) {
+      body['transactionId'] = transactionId.trim();
+    }
+    if (discountCode != null && discountCode.trim().isNotEmpty) {
+      body['discountCode'] = discountCode.trim();
+    }
 
     return await _makeRequest(
       endpoint: ApiConstants.orders,
@@ -591,6 +586,25 @@ class ApiService {
       body: body,
       requireAuth: true,
     );
+  }
+
+  // Cancel Order: PATCH {{baseUrl}}/orders/:orderId/cancel with Bearer token; body sets status to cancelled
+  static Future<Map<String, dynamic>> cancelOrder(String orderId) async {
+    final endpoint = ApiConstants.orderCancel(orderId);
+    final url = '${ApiConstants.baseUrl}$endpoint';
+    final body = {'orderStatus': 'cancelled'};
+    debugPrint('[Cancel Order API] PATCH $url');
+    debugPrint('[Cancel Order API] orderId: $orderId');
+    debugPrint('[Cancel Order API] body: $body');
+    debugPrint('[Cancel Order API] auth: Bearer token applied');
+    final response = await _makeRequest(
+      endpoint: endpoint,
+      method: 'PATCH',
+      body: body,
+      requireAuth: true,
+    );
+    debugPrint('[Cancel Order API] response: $response');
+    return response;
   }
 
   // Create Transaction
@@ -652,12 +666,15 @@ class ApiService {
   }
 
   // Contact Endpoints
-  // Get Contacts
+  // GET {{baseUrl}}/contacts — sends Authorization: Bearer <token>; response body (success, message, data) is returned.
   static Future<Map<String, dynamic>> getContacts() async {
+    debugPrint(
+      '[ApiService.getContacts] GET ${ApiConstants.baseUrl}${ApiConstants.contacts} (with auth token)',
+    );
     return await _makeRequest(
       endpoint: ApiConstants.contacts,
       method: 'GET',
-      requireAuth: true,
+      requireAuth: true, // applies Bearer token from storage
     );
   }
 
@@ -674,8 +691,9 @@ class ApiService {
       );
       debugPrint('[getProfile] API success: ${response['success']}');
       if (response['data'] != null) {
+        final d = response['data'] as Map<String, dynamic>;
         debugPrint(
-          '[getProfile] User data: name=${response['data']['name']}, email=${response['data']['email']}, profilePicture=${response['data']['profilePicture']}',
+          '[getProfile] User data: name=${d['name']}, emailOrPhone=${d['emailOrPhone']}, profilePicture=${d['profilePicture']}, role=${d['role']}, status=${d['status']}',
         );
       }
       return response;
@@ -684,6 +702,18 @@ class ApiService {
       debugPrint('[getProfile] stackTrace: $stackTrace');
       rethrow;
     }
+  }
+
+  // Get Avatars: GET {{baseUrl}}/avatars?page=1&limit=10
+  static Future<Map<String, dynamic>> getAvatars({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    return await _makeRequest(
+      endpoint: ApiConstants.avatars(page: page, limit: limit),
+      method: 'GET',
+      requireAuth: true,
+    );
   }
 
   // Get Coupons
@@ -698,8 +728,7 @@ class ApiService {
     );
   }
 
-  // Review Endpoints
-  // Create Review
+  // Review Endpoints: POST {{baseUrl}}/reviews body: { productId, rating, reviewText }; GET {{baseUrl}}/reviews/my?page=1&limit=10
   static Future<Map<String, dynamic>> createReview({
     required String productId,
     required int rating,
@@ -717,6 +746,17 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> getMyReviews({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    return await _makeRequest(
+      endpoint: ApiConstants.reviewsMy(page: page, limit: limit),
+      method: 'GET',
+      requireAuth: true,
+    );
+  }
+
   // Payment Method Endpoints
   // Get Payment Methods
   static Future<Map<String, dynamic>> getPaymentMethods() async {
@@ -727,11 +767,12 @@ class ApiService {
     );
   }
 
-  // Update User Profile
+  // Update User Profile (avatarId = selected avatar from GET /avatars; profilePicture = gallery image)
   static Future<Map<String, dynamic>> updateProfile({
     String? name,
     String? email,
     String? mobile,
+    String? avatarId,
     File? profilePicture,
   }) async {
     try {
@@ -761,6 +802,9 @@ class ApiService {
       }
       if (mobile != null && mobile.isNotEmpty) {
         request.fields['mobile'] = mobile;
+      }
+      if (avatarId != null && avatarId.isNotEmpty) {
+        request.fields['avatarId'] = avatarId;
       }
 
       if (profilePicture != null) {

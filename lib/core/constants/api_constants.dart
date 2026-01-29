@@ -67,6 +67,8 @@ class ApiConstants {
 
   // Order Endpoints
   static const String orders = '/orders';
+  /// Cancel order (User): PATCH {{baseUrl}}/orders/:orderId/cancel
+  static String orderCancel(String orderId) => '/orders/$orderId/cancel';
   static String ordersMy({int page = 1, int limit = 10, String? orderStatus}) {
     var path = '/orders/my?page=$page&limit=$limit';
     if (orderStatus != null && orderStatus.isNotEmpty && orderStatus != 'all') {
@@ -91,12 +93,18 @@ class ApiConstants {
   static const String usersUpdate = '/users/update';
   static const String usersProfile = '/users/profile';
 
+  // Avatars: GET {{baseUrl}}/avatars?page=1&limit=10
+  static String avatars({int page = 1, int limit = 10}) =>
+      '/avatars?page=$page&limit=$limit';
+
   // Coupon Endpoints
   static String coupons({int page = 1, int limit = 10}) =>
       '/coupons?page=$page&limit=$limit';
 
-  // Review Endpoints
+  // Review Endpoints: POST {{baseUrl}}/reviews (body: productId, rating, reviewText); GET {{baseUrl}}/reviews/my?page=1&limit=10
   static const String reviews = '/reviews';
+  static String reviewsMy({int page = 1, int limit = 10}) =>
+      '/reviews/my?page=$page&limit=$limit';
 
   // Payment Method Endpoints
   static const String paymentMethods = '/payment-methods';

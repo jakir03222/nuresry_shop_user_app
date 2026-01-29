@@ -15,54 +15,25 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _rememberMe = false;
   bool _isLoading = false;
-  bool _isEmailValid = false;
 
   @override
   void initState() {
     super.initState();
-    _emailController.addListener(_validateEmail);
-  }
-
-  void _validateEmail() {
-    setState(() {
-      _isEmailValid = Validators.validateEmail(_emailController.text) == null &&
-          _emailController.text.isNotEmpty;
-    });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
+    _emailOrPhoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _handleRegister() async {
-    // Validate that at least email or phone is provided
-    final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
-    
-    if (email.isEmpty && phone.isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please provide either email or phone number'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
-    }
-    
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
       
@@ -73,8 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.signUp(
         name: _nameController.text.trim(),
-        email: email.isNotEmpty ? email : null,
-        phone: phone.isNotEmpty ? phone : null,
+        emailOrPhone: _emailOrPhoneController.text.trim(),
         password: _passwordController.text,
         profileImage: null,
       );
@@ -128,7 +98,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? Function(String?)? validator,
     bool obscureText = false,
     Widget? suffixIcon,
-    bool showCheckmark = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -162,13 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             color: AppColors.plantMediumGreen,
             size: 22,
           ),
-          suffixIcon: suffixIcon ?? (showCheckmark && _isEmailValid
-              ? const Icon(
-                  Icons.check_circle,
-                  color: AppColors.success,
-                  size: 22,
-                )
-              : null),
+          suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         ),
@@ -284,48 +247,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: Validators.validateName,
                           ),
                           const SizedBox(height: 20),
-                          // Email field (optional)
+                          // Email or Phone field
                           _buildInputField(
-                            controller: _emailController,
-                            hintText: 'Email (Optional)',
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              // Only validate if value is provided
-                              if (value != null && value.isNotEmpty) {
-                                return Validators.validateEmail(value);
-                              }
-                              return null;
-                            },
-                            showCheckmark: true,
-                          ),
-                          const SizedBox(height: 20),
-                          // Phone field (optional)
-                          _buildInputField(
-                            controller: _phoneController,
-                            hintText: 'Phone Number (Optional)',
-                            prefixIcon: Icons.phone_outlined,
-                            keyboardType: TextInputType.phone,
-                            validator: (value) {
-                              // Only validate if value is provided
-                              if (value != null && value.isNotEmpty) {
-                                return Validators.validateMobile(value);
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          // Info text
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: Text(
-                              'Note: At least one of email or phone is required',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.plantMediumGreen.withOpacity(0.7),
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
+                            controller: _emailOrPhoneController,
+                            hintText: 'Email or Phone',
+                            prefixIcon: Icons.person_outline,
+                            keyboardType: TextInputType.text,
+                            validator: Validators.validateEmailOrPhone,
                           ),
                           const SizedBox(height: 20),
                           // Password field
@@ -349,53 +277,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 });
                               },
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Remember Me and Forgot Password
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Checkbox(
-                                    value: _rememberMe,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _rememberMe = value ?? false;
-                                      });
-                                    },
-                                    activeColor: AppColors.plantMediumGreen,
-                                    checkColor: AppColors.textWhite,
-                                  ),
-                                  const Text(
-                                    'Remember Me',
-                                    style: TextStyle(
-                                      color: AppColors.plantDarkGreen,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  context.push('/forgot-password');
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: const Text(
-                                  'Forgot Password?',
-                                  style: TextStyle(
-                                    color: AppColors.plantDarkGreen,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                           const SizedBox(height: 32),
                           // Register button

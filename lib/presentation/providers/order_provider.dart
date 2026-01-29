@@ -165,6 +165,30 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
+  /// Cancel order by orderId. Backend validates 6-hour rule.
+  /// On success: updates in-memory list and SQLite cache so UI shows cancelled live (no pending); Cancelled tab shows correct list.
+  Future<Map<String, dynamic>> cancelOrder(String orderId) async {
+    try {
+      final response = await ApiService.cancelOrder(orderId);
+      if (response['success'] == true) {
+        final now = DateTime.now();
+        final index = _orders.indexWhere((o) => o.orderId == orderId);
+        if (index >= 0) {
+          _orders[index] = _orders[index].copyWith(
+            orderStatus: 'cancelled',
+            updatedAt: now,
+          );
+          notifyListeners();
+        }
+        await DatabaseService.updateOrderStatus(orderId, 'cancelled', updatedAt: now);
+        return response;
+      }
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> setFilter(String status) async {
     if (_selectedStatus == status) return;
     _selectedStatus = status;

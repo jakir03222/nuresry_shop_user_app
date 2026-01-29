@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators.dart';
+import '../../../data/models/avatar_model.dart';
+import '../../../data/services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_button.dart';
@@ -24,6 +26,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _mobileController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   File? _selectedImage;
+  String? _selectedAvatarId;
+  List<AvatarModel> _avatars = [];
+  bool _isLoadingAvatars = false;
   bool _isLoading = false;
   bool _isLoadingProfile = false;
 
@@ -32,7 +37,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProfile();
+      _loadAvatars();
     });
+  }
+
+  Future<void> _loadAvatars() async {
+    setState(() => _isLoadingAvatars = true);
+    try {
+      final response = await ApiService.getAvatars(page: 1, limit: 10);
+      if (mounted && response['success'] == true && response['data'] != null) {
+        final data = response['data'] as List<dynamic>;
+        setState(() {
+          _avatars = data
+              .map((e) => AvatarModel.fromJson(e as Map<String, dynamic>))
+              .where((a) => a.isActive)
+              .toList();
+          _isLoadingAvatars = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoadingAvatars = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingAvatars = false);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -70,7 +97,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImageFromGallery() async {
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -79,6 +106,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (image != null && mounted) {
         setState(() {
           _selectedImage = File(image.path);
+          _selectedAvatarId = null;
         });
       }
     } catch (e) {
@@ -91,6 +119,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       }
     }
+  }
+
+  void _selectAvatar(AvatarModel avatar) {
+    setState(() {
+      _selectedAvatarId = avatar.id;
+      _selectedImage = null;
+    });
   }
 
   @override
@@ -117,6 +152,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         name: _fullNameController.text.trim(),
         email: _emailController.text.trim(),
         mobile: _mobileController.text.trim(),
+        avatarId: _selectedAvatarId,
         profilePicture: _selectedImage,
       );
 
@@ -191,81 +227,181 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 24),
-                    // Profile Image Section
+                    // Profile Image Section (preview: selected avatar, gallery image, or current)
                     Center(
                       child: Consumer<AuthProvider>(
                         builder: (context, authProvider, _) {
                           final user = authProvider.user;
                           final profileImageUrl = user?.profileImage;
-                          
-                          return GestureDetector(
-                            onTap: _pickImage,
-                            child: Stack(
-                              children: [
-                                Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.borderGrey,
-                                    border: Border.all(
-                                      color: AppColors.primaryBlue,
-                                      width: 3,
-                                    ),
+                          String? displayImageUrl;
+                          if (_selectedAvatarId != null) {
+                            for (var a in _avatars) {
+                              if (a.id == _selectedAvatarId) {
+                                displayImageUrl = a.imageUrl;
+                                break;
+                              }
+                            }
+                          }
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.borderGrey,
+                                  border: Border.all(
+                                    color: AppColors.primaryBlue,
+                                    width: 3,
                                   ),
-                                  child: ClipOval(
-                                    child: _selectedImage != null
-                                        ? Image.file(
-                                            _selectedImage!,
-                                            fit: BoxFit.cover,
-                                            width: 120,
-                                            height: 120,
-                                          )
-                                        : profileImageUrl != null && profileImageUrl.isNotEmpty
-                                            ? CachedNetworkImage(
-                                                imageUrl: profileImageUrl,
-                                                fit: BoxFit.cover,
-                                                width: 120,
-                                                height: 120,
-                                                placeholder: (context, url) => const Center(
-                                                  child: CircularProgressIndicator(),
-                                                ),
-                                                errorWidget: (context, url, error) => const Icon(
-                                                  Icons.person,
-                                                  size: 60,
-                                                  color: AppColors.primaryBlue,
-                                                ),
-                                              )
-                                            : const Icon(
+                                ),
+                                child: ClipOval(
+                                  child: _selectedImage != null
+                                      ? Image.file(
+                                          _selectedImage!,
+                                          fit: BoxFit.cover,
+                                          width: 120,
+                                          height: 120,
+                                        )
+                                      : displayImageUrl != null && displayImageUrl.isNotEmpty
+                                          ? CachedNetworkImage(
+                                              imageUrl: displayImageUrl,
+                                              fit: BoxFit.cover,
+                                              width: 120,
+                                              height: 120,
+                                              placeholder: (context, url) => const Center(
+                                                child: CircularProgressIndicator(strokeWidth: 2),
+                                              ),
+                                              errorWidget: (context, url, error) => const Icon(
                                                 Icons.person,
                                                 size: 60,
                                                 color: AppColors.primaryBlue,
                                               ),
-                                  ),
+                                            )
+                                          : profileImageUrl != null && profileImageUrl.isNotEmpty
+                                              ? CachedNetworkImage(
+                                                  imageUrl: profileImageUrl,
+                                                  fit: BoxFit.cover,
+                                                  width: 120,
+                                                  height: 120,
+                                                  placeholder: (context, url) => const Center(
+                                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                                  ),
+                                                  errorWidget: (context, url, error) => const Icon(
+                                                    Icons.person,
+                                                    size: 60,
+                                                    color: AppColors.primaryBlue,
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.person,
+                                                  size: 60,
+                                                  color: AppColors.primaryBlue,
+                                                ),
                                 ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primaryBlue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.camera_alt,
-                                      color: AppColors.textWhite,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           );
                         },
                       ),
                     ),
-              const SizedBox(height: 32),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Change profile picture',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Avatars from API: GET {{baseUrl}}/avatars?page=1&limit=10
+                    const Text(
+                      'Choose an avatar',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_isLoadingAvatars)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    else if (_avatars.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundWhite,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderGrey),
+                        ),
+                        child: const Text(
+                          'No avatars available',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    else
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          childAspectRatio: 0.95,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        itemCount: _avatars.length,
+                        itemBuilder: (context, index) {
+                          final avatar = _avatars[index];
+                          final isSelected = _selectedAvatarId == avatar.id;
+                          return GestureDetector(
+                            onTap: () => _selectAvatar(avatar),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primaryBlue : AppColors.borderGrey,
+                                  width: isSelected ? 3 : 1,
+                                ),
+                              ),
+                              child: ClipOval(
+                                child: CachedNetworkImage(
+                                  imageUrl: avatar.imageUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => const Center(
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                  errorWidget: (context, url, error) => const Icon(Icons.person),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 16),
+                    // Gallery option
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _pickImageFromGallery,
+                        icon: const Icon(Icons.photo_library_outlined, size: 20),
+                        label: const Text('Choose from Gallery'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryBlue,
+                          side: const BorderSide(color: AppColors.primaryBlue),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
               CustomTextField(
                 controller: _fullNameController,
                 label: 'Full Name',
@@ -285,11 +421,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 16),
               CustomTextField(
                 controller: _mobileController,
-                label: 'Mobile',
+                label: 'Mobile (optional)',
                 hintText: 'Enter your mobile number',
                 prefixIcon: Icons.phone,
                 keyboardType: TextInputType.phone,
-                validator: Validators.validateMobile,
+                validator: Validators.validateMobileOptional,
               ),
               const SizedBox(height: 32),
               CustomButton(

@@ -17,8 +17,7 @@ class CreateAccountScreen extends StatefulWidget {
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -37,8 +36,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
+    _emailOrPhoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -80,8 +78,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.signUp(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
+        emailOrPhone: _emailOrPhoneController.text.trim(),
         password: _passwordController.text,
         profileImage: _profileImage,
       );
@@ -103,7 +100,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               duration: const Duration(seconds: 3),
             ),
           );
-          context.push('/otp-verification?email=${Uri.encodeComponent(_emailController.text.trim())}');
+          context.go('/login');
         }
       } else {
         if (context.mounted) {
@@ -274,26 +271,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   const SizedBox(height: 24),
                   // Email Field
                   _buildUnderlineTextField(
-                    controller: _emailController,
-                    hintText: 'Email address',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: Validators.validateEmail,
-                  ),
-                  const SizedBox(height: 24),
-                  // Phone Field
-                  _buildUnderlineTextField(
-                    controller: _phoneController,
-                    hintText: 'Phone number',
-                    keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your phone number';
-                      }
-                      if (value.length < 10) {
-                        return 'Phone number must be at least 10 digits';
-                      }
-                      return null;
-                    },
+                    controller: _emailOrPhoneController,
+                    hintText: 'Email or Phone',
+                    keyboardType: TextInputType.text,
+                    validator: Validators.validateEmailOrPhone,
                   ),
                   const SizedBox(height: 24),
                   // Password Field

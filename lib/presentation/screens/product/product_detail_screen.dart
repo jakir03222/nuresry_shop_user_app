@@ -28,6 +28,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // GET {{baseUrl}}/products/:id – load product data and show in UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final productProvider = Provider.of<ProductProvider>(context, listen: false);
@@ -94,16 +95,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           }
 
           final product = productProvider.currentProduct!;
- Provider.of<CartProvider>(context, listen: false);
           final allImages = product.images != null && product.images!.isNotEmpty
               ? [product.imageUrl, ...product.images!]
               : [product.imageUrl];
 
           return CustomScrollView(
             slivers: [
-              // App Bar with Image
               SliverAppBar(
-                expandedHeight: 350,
                 pinned: true,
                 backgroundColor: AppColors.primaryBlue,
                 leading: IconButton(
@@ -118,35 +116,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     },
                   ),
                 ],
-                flexibleSpace: FlexibleSpaceBar(
-                  background: PageView.builder(
-                    itemCount: allImages.length,
-                    onPageChanged: (index) {
-                      setState(() {
-                        _selectedImageIndex = index;
-                      });
-                    },
-                    itemBuilder: (context, index) {
-                      return CachedNetworkImage(
-                        imageUrl: allImages[index],
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => const ShimmerLoader(
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: AppColors.borderGrey,
-                          child: const Icon(Icons.image, size: 100),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                bottom: allImages.length > 1
-                    ? PreferredSize(
-                        preferredSize: const Size.fromHeight(30),
-                        child: Container(
-                          padding: const EdgeInsets.only(bottom: 8),
+              ),
+              // Image carousel: swipe left/right to see all images
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 320,
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      PageView.builder(
+                        itemCount: allImages.length,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _selectedImageIndex = index;
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          return CachedNetworkImage(
+                            imageUrl: allImages[index],
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => const ShimmerLoader(
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: AppColors.borderGrey,
+                              child: const Icon(Icons.image, size: 100),
+                            ),
+                          );
+                        },
+                      ),
+                      if (allImages.length > 1)
+                        Container(
+                          padding: const EdgeInsets.only(bottom: 12),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(
@@ -165,8 +167,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
                         ),
-                      )
-                    : null,
+                    ],
+                  ),
+                ),
               ),
               // Product Details
               SliverToBoxAdapter(
@@ -175,7 +178,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Product Name and Rating
+                      // API data: name, sku, brand, ratingAverage, ratingCount
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -183,13 +186,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  product.name,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        product.name,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    if (product.isFeatured)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryBlue.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          'Featured',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primaryBlue,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 if (product.sku != null) ...[
                                   const SizedBox(height: 4),
@@ -260,6 +285,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                         child: Column(
                           children: [
+                            // API: price, discount
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -337,6 +363,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                             ],
                             const Divider(height: 24),
+                            // API: quantity, isAvailable
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -362,6 +389,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ],
                             ),
                             const SizedBox(height: 8),
+                            // API: courierCharge
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -381,9 +409,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ],
                             ),
+                            if (product.deliveryTime != null && product.deliveryTime!.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Delivery Time:',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  Text(
+                                    product.deliveryTime!,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
+                      // API: _id, categoryId, isFeatured, createdAt, updatedAt
+              
+                   
                       const SizedBox(height: 24),
                       // Description
                       Container(
@@ -589,27 +642,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton(
-                                    onPressed: () => _showReviewDialog(context, product.id),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      side: const BorderSide(color: AppColors.primaryBlue),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Write a Review',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primaryBlue,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                // SizedBox(
+                                //   width: double.infinity,
+                                //   child: OutlinedButton(
+                                //     onPressed: () => _showReviewDialog(context, product.id),
+                                //     style: OutlinedButton.styleFrom(
+                                //       padding: const EdgeInsets.symmetric(vertical: 16),
+                                //       side: const BorderSide(color: AppColors.primaryBlue),
+                                //       shape: RoundedRectangleBorder(
+                                //         borderRadius: BorderRadius.circular(12),
+                                //       ),
+                                //     ),
+                                //     child: const Text(
+                                //       'Write a Review',
+                                //       style: TextStyle(
+                                //         fontSize: 16,
+                                //         fontWeight: FontWeight.w600,
+                                //         color: AppColors.primaryBlue,
+                                //       ),
+                                //     ),
+                                //   ),
+                                // ),
+                            
+                            
+                            
                               ],
                             );
                           },
@@ -642,6 +698,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -785,9 +872,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     ),
                                     backgroundColor: AppColors.success,
                                     behavior: SnackBarBehavior.floating,
+                                    action: SnackBarAction(
+                                      label: 'View my reviews',
+                                      textColor: AppColors.textWhite,
+                                      onPressed: () {
+                                        context.push('/my-reviews');
+                                      },
+                                    ),
                                   ),
                                 );
-                                // Refresh product to show updated rating
                                 final productProvider = Provider.of<ProductProvider>(
                                   context,
                                   listen: false,

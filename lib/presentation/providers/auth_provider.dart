@@ -54,8 +54,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> signIn({
-    String? email,
-    String? phone,
+    required String emailOrPhone,
     required String password,
   }) async {
     _isLoading = true;
@@ -64,8 +63,7 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final response = await ApiService.login(
-        email: email,
-        phone: phone,
+        emailOrPhone: emailOrPhone,
         password: password,
       );
 
@@ -134,14 +132,12 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> signUp({
     required String name,
-    String? email,
-    String? phone,
+    required String emailOrPhone,
     required String password,
     File? profileImage,
   }) async {
-    // Validate that at least one identifier is provided
-    if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
-      _errorMessage = 'Either email or phone number is required';
+    if (emailOrPhone.trim().isEmpty) {
+      _errorMessage = 'Email or phone is required';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -150,8 +146,7 @@ class AuthProvider with ChangeNotifier {
     debugPrint('[AuthProvider.signUp] Starting signup process...');
     debugPrint('[AuthProvider.signUp] Parameters:');
     debugPrint('  - name: $name');
-    debugPrint('  - email: ${email ?? 'not provided'}');
-    debugPrint('  - phone: ${phone ?? 'not provided'}');
+    debugPrint('  - emailOrPhone: $emailOrPhone');
     debugPrint('  - password length: ${password.length}');
     debugPrint('  - profileImage: ${profileImage?.path ?? 'null'}');
     
@@ -164,8 +159,7 @@ class AuthProvider with ChangeNotifier {
       debugPrint('[AuthProvider.signUp] Calling ApiService.signUp...');
       final response = await ApiService.signUp(
         name: name,
-        email: email,
-        phone: phone,
+        emailOrPhone: emailOrPhone,
         password: password,
         profileImage: profileImage,
       );
@@ -367,11 +361,12 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Update user profile
+  // Update user profile (avatarId = selected avatar; profilePicture = gallery image)
   Future<bool> updateProfile({
     String? name,
     String? email,
     String? mobile,
+    String? avatarId,
     File? profilePicture,
   }) async {
     _isLoading = true;
@@ -383,6 +378,7 @@ class AuthProvider with ChangeNotifier {
         name: name,
         email: email,
         mobile: mobile,
+        avatarId: avatarId,
         profilePicture: profilePicture,
       );
 

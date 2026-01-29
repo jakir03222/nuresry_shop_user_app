@@ -52,12 +52,20 @@ class UserModel implements BaseModel {
     return UserModel.fromJsonMap(json);
   }
 
-  // Static factory method for easier usage
+  // API: GET {{baseUrl}}/users/profile → data: _id, name, emailOrPhone, role, status, avatarId{_id,name,imageUrl}, profilePicture
   static UserModel fromJsonMap(Map<String, dynamic> json) {
+    final profilePicture = json['profilePicture'];
+    final avatarId = json['avatarId'];
+    String? avatarImageUrl;
+    if (avatarId is Map<String, dynamic>) {
+      avatarImageUrl = avatarId['imageUrl'] as String?;
+    }
+    final profileImage = profilePicture ?? avatarImageUrl ?? json['profileImage'];
+
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? json['fullName'] ?? '',
-      email: json['email'] ?? '',
+      email: json['email'] ?? json['emailOrPhone'] ?? '',
       role: json['role'] ?? 'user',
       isEmailVerified: json['isEmailVerified'] ?? false,
       status: json['status'] ?? 'active',
@@ -68,8 +76,8 @@ class UserModel implements BaseModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : null,
-      mobile: json['phone'] ?? json['mobile'], // Support both 'phone' and 'mobile' fields
-      profileImage: json['profilePicture'] ?? json['profileImage'],
+      mobile: json['phone'] ?? json['mobile'],
+      profileImage: profileImage is String ? profileImage : null,
     );
   }
 
