@@ -30,10 +30,7 @@ class ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.backgroundWhite,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.borderGrey,
-            width: 1,
-          ),
+          border: Border.all(color: AppColors.borderGrey, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -83,7 +80,9 @@ class ProductCard extends StatelessWidget {
                   right: 8,
                   child: Consumer<FavoriteProvider>(
                     builder: (context, favoriteProvider, child) {
-                      final isFavorite = favoriteProvider.isFavorite(product.id);
+                      final isFavorite = favoriteProvider.isFavorite(
+                        product.id,
+                      );
                       return Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.9),
@@ -92,7 +91,9 @@ class ProductCard extends StatelessWidget {
                         child: IconButton(
                           icon: Icon(
                             isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: isFavorite ? AppColors.accentRed : AppColors.textSecondary,
+                            color: isFavorite
+                                ? AppColors.accentRed
+                                : AppColors.textSecondary,
                             size: 20,
                           ),
                           onPressed: () {
@@ -158,7 +159,10 @@ class ProductCard extends StatelessWidget {
             // Product Info
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.max,
@@ -304,9 +308,7 @@ class ProductCard extends StatelessWidget {
                                   }
                                 : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: isInCart
-                                  ? AppColors.success
-                                  : AppColors.primaryBlue,
+                              backgroundColor: AppColors.success,
                               foregroundColor: AppColors.textWhite,
                               padding: const EdgeInsets.symmetric(vertical: 6),
                               minimumSize: const Size(0, 32),
@@ -315,7 +317,7 @@ class ProductCard extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              isInCart ? 'In Cart' : 'Add to Cart',
+                              isInCart ? 'In cart' : 'Add to cart',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,

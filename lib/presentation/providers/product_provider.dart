@@ -10,6 +10,7 @@ import '../../../core/services/database_service.dart';
 class ProductProvider with ChangeNotifier {
   final List<ProductModel> _products = [];
   List<ProductModel> _flashSaleProducts = [];
+  List<ProductModel> _bestSellingProducts = [];
   List<CategoryModel> _categories = [];
   List<CarouselModel> _carousels = [];
   List<FlashSaleModel> _flashSales = [];
@@ -18,6 +19,9 @@ class ProductProvider with ChangeNotifier {
 
   List<ProductModel> get products => _products;
   List<ProductModel> get flashSaleProducts => _flashSaleProducts;
+  List<ProductModel> get bestSellingProducts => _bestSellingProducts;
+  bool _isLoadingBestSelling = false;
+  bool get isLoadingBestSelling => _isLoadingBestSelling;
   List<CategoryModel> get categories => _categories;
   List<CarouselModel> get carousels => _carousels;
   List<FlashSaleModel> get flashSales => _flashSales;
@@ -36,19 +40,19 @@ class ProductProvider with ChangeNotifier {
           final cachedCategories = await DatabaseService.getCategories();
           if (cachedCategories.isNotEmpty) {
             _categories = cachedCategories
-                .map(
-                  (json) {
-                    try {
-                      return CategoryModel.fromJsonMap(json);
-                    } catch (e) {
-                      debugPrint('[ProductProvider] Error parsing cached category: $e');
-                      return null;
-                    }
-                  },
-                )
+                .map((json) {
+                  try {
+                    return CategoryModel.fromJsonMap(json);
+                  } catch (e) {
+                    debugPrint(
+                      '[ProductProvider] Error parsing cached category: $e',
+                    );
+                    return null;
+                  }
+                })
                 .whereType<CategoryModel>()
                 .toList();
-            
+
             if (_categories.isNotEmpty) {
               _isLoading = false;
               notifyListeners();
@@ -66,7 +70,9 @@ class ProductProvider with ChangeNotifier {
             }
           }
         } catch (e) {
-          debugPrint('[ProductProvider] Error loading categories from cache: $e');
+          debugPrint(
+            '[ProductProvider] Error loading categories from cache: $e',
+          );
           // Continue to API fetch if cache fails
         }
       }
@@ -83,9 +89,9 @@ class ProductProvider with ChangeNotifier {
             .toList();
 
         // Save to SQLite
-        await DatabaseService.saveCategories(categoryData
-            .map((e) => e as Map<String, dynamic>)
-            .toList());
+        await DatabaseService.saveCategories(
+          categoryData.map((e) => e as Map<String, dynamic>).toList(),
+        );
       } else {
         _errorMessage =
             response['message'] as String? ?? 'Failed to load categories';
@@ -99,21 +105,23 @@ class ProductProvider with ChangeNotifier {
         final cachedCategories = await DatabaseService.getCategories();
         if (cachedCategories.isNotEmpty) {
           _categories = cachedCategories
-              .map(
-                (json) {
-                  try {
-                    return CategoryModel.fromJsonMap(json);
-                  } catch (e) {
-                    debugPrint('[ProductProvider] Error parsing cached category in fallback: $e');
-                    return null;
-                  }
-                },
-              )
+              .map((json) {
+                try {
+                  return CategoryModel.fromJsonMap(json);
+                } catch (e) {
+                  debugPrint(
+                    '[ProductProvider] Error parsing cached category in fallback: $e',
+                  );
+                  return null;
+                }
+              })
               .whereType<CategoryModel>()
               .toList();
         }
       } catch (cacheError) {
-        debugPrint('[ProductProvider] Error loading categories from cache fallback: $cacheError');
+        debugPrint(
+          '[ProductProvider] Error loading categories from cache fallback: $cacheError',
+        );
       }
 
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -134,7 +142,8 @@ class ProductProvider with ChangeNotifier {
         if (_categories.isNotEmpty) {
           _categories = categoryData
               .map(
-                (json) => CategoryModel.fromJsonMap(json as Map<String, dynamic>),
+                (json) =>
+                    CategoryModel.fromJsonMap(json as Map<String, dynamic>),
               )
               .toList();
           notifyListeners();
@@ -156,7 +165,18 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<void> loadProductById(String productId, {bool forceRefresh = false}) async {
+  FlashSaleModel? getFlashSaleById(String id) {
+    try {
+      return _flashSales.firstWhere((fs) => fs.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> loadProductById(
+    String productId, {
+    bool forceRefresh = false,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     _currentProduct = null;
@@ -254,77 +274,113 @@ class ProductProvider with ChangeNotifier {
     String categoryId, {
     bool loadMore = false,
   }) async {
-    debugPrint('[ProductProvider.loadProductsByCategory] ========== START ==========');
-    debugPrint('[ProductProvider.loadProductsByCategory] Category ID: $categoryId');
+    debugPrint(
+      '[ProductProvider.loadProductsByCategory] ========== START ==========',
+    );
+    debugPrint(
+      '[ProductProvider.loadProductsByCategory] Category ID: $categoryId',
+    );
     debugPrint('[ProductProvider.loadProductsByCategory] Load More: $loadMore');
-    
+
     if (loadMore && !_hasMoreProducts) {
-      debugPrint('[ProductProvider.loadProductsByCategory] No more products to load');
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] No more products to load',
+      );
       return; // No more products to load
     }
 
     final pageToLoad = loadMore ? _currentPage + 1 : 1;
-    debugPrint('[ProductProvider.loadProductsByCategory] Page to load: $pageToLoad');
+    debugPrint(
+      '[ProductProvider.loadProductsByCategory] Page to load: $pageToLoad',
+    );
 
     if (loadMore) {
       _isLoadingMore = true;
-      debugPrint('[ProductProvider.loadProductsByCategory] Setting isLoadingMore = true');
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Setting isLoadingMore = true',
+      );
     } else {
       _isLoading = true;
       _errorMessage = null;
-      debugPrint('[ProductProvider.loadProductsByCategory] Setting isLoading = true, cleared error');
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Setting isLoading = true, cleared error',
+      );
     }
     notifyListeners();
 
     try {
-      debugPrint('[ProductProvider.loadProductsByCategory] Calling API: getProductsByCategory');
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Calling API: getProductsByCategory',
+      );
       debugPrint('[ProductProvider.loadProductsByCategory] Parameters:');
       debugPrint('  - categoryId: $categoryId');
       debugPrint('  - page: $pageToLoad');
       debugPrint('  - limit: 10');
-      
+
       final response = await ApiService.getProductsByCategory(
         categoryId,
         page: pageToLoad,
         limit: 10,
       );
 
-      debugPrint('[ProductProvider.loadProductsByCategory] API Response received');
-      debugPrint('[ProductProvider.loadProductsByCategory] Response success: ${response['success']}');
-      debugPrint('[ProductProvider.loadProductsByCategory] Response message: ${response['message']}');
-      debugPrint('[ProductProvider.loadProductsByCategory] Response has data: ${response['data'] != null}');
-      
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] API Response received',
+      );
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Response success: ${response['success']}',
+      );
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Response message: ${response['message']}',
+      );
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Response has data: ${response['data'] != null}',
+      );
+
       if (response['meta'] != null) {
-        debugPrint('[ProductProvider.loadProductsByCategory] Pagination meta: ${response['meta']}');
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] Pagination meta: ${response['meta']}',
+        );
       }
 
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> productData = response['data'] as List<dynamic>;
-        debugPrint('[ProductProvider.loadProductsByCategory] Products count: ${productData.length}');
-        
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] Products count: ${productData.length}',
+        );
+
         int successCount = 0;
         int errorCount = 0;
-        
+
         final newProducts = productData
-            .map(
-              (json) {
-                try {
-                  final product = ProductModel.fromJsonMap(json as Map<String, dynamic>);
-                  successCount++;
-                  debugPrint('[ProductProvider.loadProductsByCategory] ✓ Parsed product: ${product.id} - ${product.name}');
-                  if (product.tags != null && product.tags!.isNotEmpty) {
-                    debugPrint('[ProductProvider.loadProductsByCategory]   Tags: ${product.tags}');
-                  }
-                  return product;
-                } catch (e, stackTrace) {
-                  errorCount++;
-                  debugPrint('[ProductProvider.loadProductsByCategory] ✗ Error parsing product: $e');
-                  debugPrint('[ProductProvider.loadProductsByCategory] Product data: $json');
-                  debugPrint('[ProductProvider.loadProductsByCategory] Stack trace: $stackTrace');
-                  return null;
+            .map((json) {
+              try {
+                final product = ProductModel.fromJsonMap(
+                  json as Map<String, dynamic>,
+                );
+                successCount++;
+                debugPrint(
+                  '[ProductProvider.loadProductsByCategory] ✓ Parsed product: ${product.id} - ${product.name}',
+                );
+                if (product.tags != null && product.tags!.isNotEmpty) {
+                  debugPrint(
+                    '[ProductProvider.loadProductsByCategory]   Tags: ${product.tags}',
+                  );
                 }
-              },
-            )
+                return product;
+              } catch (e, stackTrace) {
+                errorCount++;
+                debugPrint(
+                  '[ProductProvider.loadProductsByCategory] ✗ Error parsing product: $e',
+                );
+                debugPrint(
+                  '[ProductProvider.loadProductsByCategory] Product data: $json',
+                );
+                debugPrint(
+                  '[ProductProvider.loadProductsByCategory] Stack trace: $stackTrace',
+                );
+                return null;
+              }
+            })
             .whereType<ProductModel>()
             .toList();
 
@@ -337,18 +393,24 @@ class ProductProvider with ChangeNotifier {
         if (loadMore) {
           _categoryProducts.addAll(newProducts);
           _currentPage = pageToLoad;
-          debugPrint('[ProductProvider.loadProductsByCategory] Added ${newProducts.length} products (loadMore)');
-          debugPrint('[ProductProvider.loadProductsByCategory] Total products now: ${_categoryProducts.length}');
+          debugPrint(
+            '[ProductProvider.loadProductsByCategory] Added ${newProducts.length} products (loadMore)',
+          );
+          debugPrint(
+            '[ProductProvider.loadProductsByCategory] Total products now: ${_categoryProducts.length}',
+          );
         } else {
           _categoryProducts = newProducts;
           _currentPage = 1;
-          debugPrint('[ProductProvider.loadProductsByCategory] Set ${newProducts.length} products (initial load)');
+          debugPrint(
+            '[ProductProvider.loadProductsByCategory] Set ${newProducts.length} products (initial load)',
+          );
         }
 
         // Update pagination metadata
         if (response['meta'] != null) {
           final meta = response['meta'] as Map<String, dynamic>;
-          
+
           // Safely convert to int - handle both int and string types
           int safeToInt(dynamic value, [int defaultValue = 0]) {
             if (value == null) return defaultValue;
@@ -360,58 +422,84 @@ class ProductProvider with ChangeNotifier {
             if (value is num) return value.toInt();
             return defaultValue;
           }
-          
+
           _totalDocuments = safeToInt(meta['totalDocuments'], 0);
           _totalPages = safeToInt(meta['totalPages'], 1);
           _limitPerPage = safeToInt(meta['limitPerPage'], 10);
           _hasMoreProducts = _currentPage < _totalPages;
-          
-          debugPrint('[ProductProvider.loadProductsByCategory] Pagination updated:');
+
+          debugPrint(
+            '[ProductProvider.loadProductsByCategory] Pagination updated:',
+          );
           debugPrint('  - Total documents: $_totalDocuments');
           debugPrint('  - Total pages: $_totalPages');
           debugPrint('  - Current page: $_currentPage');
           debugPrint('  - Has more: $_hasMoreProducts');
         } else {
-          debugPrint('[ProductProvider.loadProductsByCategory] No pagination meta in response');
+          debugPrint(
+            '[ProductProvider.loadProductsByCategory] No pagination meta in response',
+          );
         }
       } else {
         _errorMessage =
             response['message'] as String? ?? 'Failed to load products';
-        debugPrint('[ProductProvider.loadProductsByCategory] ✗ API Error: $_errorMessage');
-        debugPrint('[ProductProvider.loadProductsByCategory] Full response: $response');
-        
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] ✗ API Error: $_errorMessage',
+        );
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] Full response: $response',
+        );
+
         if (!loadMore) {
           _categoryProducts = [];
-          debugPrint('[ProductProvider.loadProductsByCategory] Cleared products list');
+          debugPrint(
+            '[ProductProvider.loadProductsByCategory] Cleared products list',
+          );
         }
       }
 
       if (loadMore) {
         _isLoadingMore = false;
-        debugPrint('[ProductProvider.loadProductsByCategory] Set isLoadingMore = false');
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] Set isLoadingMore = false',
+        );
       } else {
         _isLoading = false;
-        debugPrint('[ProductProvider.loadProductsByCategory] Set isLoading = false');
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] Set isLoading = false',
+        );
       }
       notifyListeners();
-      debugPrint('[ProductProvider.loadProductsByCategory] ========== SUCCESS ==========');
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] ========== SUCCESS ==========',
+      );
     } catch (e, stackTrace) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       debugPrint('[ProductProvider.loadProductsByCategory] ✗✗✗ EXCEPTION ✗✗✗');
       debugPrint('[ProductProvider.loadProductsByCategory] Error: $e');
-      debugPrint('[ProductProvider.loadProductsByCategory] Stack trace: $stackTrace');
-      debugPrint('[ProductProvider.loadProductsByCategory] Error message: $_errorMessage');
-      
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Stack trace: $stackTrace',
+      );
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] Error message: $_errorMessage',
+      );
+
       if (!loadMore) {
         _categoryProducts = [];
         _isLoading = false;
-        debugPrint('[ProductProvider.loadProductsByCategory] Cleared products and set isLoading = false');
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] Cleared products and set isLoading = false',
+        );
       } else {
         _isLoadingMore = false;
-        debugPrint('[ProductProvider.loadProductsByCategory] Set isLoadingMore = false');
+        debugPrint(
+          '[ProductProvider.loadProductsByCategory] Set isLoadingMore = false',
+        );
       }
       notifyListeners();
-      debugPrint('[ProductProvider.loadProductsByCategory] ========== ERROR ==========');
+      debugPrint(
+        '[ProductProvider.loadProductsByCategory] ========== ERROR ==========',
+      );
     }
   }
 
@@ -435,30 +523,30 @@ class ProductProvider with ChangeNotifier {
   List<ProductModel> get allProducts => _allProducts;
   bool get isLoadingAllProducts => _isLoadingAllProducts;
 
-  Future<void> loadAllProducts({
-    int page = 1,
-    int limit = 1000,
-  }) async {
+  Future<void> loadAllProducts({int page = 1, int limit = 1000}) async {
     _isLoadingAllProducts = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final response = await ApiService.getAllProducts(page: page, limit: limit);
+      final response = await ApiService.getAllProducts(
+        page: page,
+        limit: limit,
+      );
 
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> productData = response['data'] as List<dynamic>;
         _allProducts = productData
-            .map(
-              (json) {
-                try {
-                  return ProductModel.fromJsonMap(json as Map<String, dynamic>);
-                } catch (e) {
-                  debugPrint('[ProductProvider.loadAllProducts] Error parsing product: $e');
-                  return null;
-                }
-              },
-            )
+            .map((json) {
+              try {
+                return ProductModel.fromJsonMap(json as Map<String, dynamic>);
+              } catch (e) {
+                debugPrint(
+                  '[ProductProvider.loadAllProducts] Error parsing product: $e',
+                );
+                return null;
+              }
+            })
             .whereType<ProductModel>()
             .toList();
 
@@ -472,10 +560,14 @@ class ProductProvider with ChangeNotifier {
             if (value is num) return value.toInt();
             return defaultValue;
           }
-          debugPrint('[ProductProvider.loadAllProducts] meta: totalDocuments=${safeToInt(meta['totalDocuments'])}, totalPages=${safeToInt(meta['totalPages'])}');
+
+          debugPrint(
+            '[ProductProvider.loadAllProducts] meta: totalDocuments=${safeToInt(meta['totalDocuments'])}, totalPages=${safeToInt(meta['totalPages'])}',
+          );
         }
       } else {
-        _errorMessage = response['message'] as String? ?? 'Failed to load products';
+        _errorMessage =
+            response['message'] as String? ?? 'Failed to load products';
         _allProducts = [];
       }
     } catch (e) {
@@ -505,9 +597,7 @@ class ProductProvider with ChangeNotifier {
         final cachedCarousels = await DatabaseService.getCarousels();
         if (cachedCarousels.isNotEmpty) {
           _carousels = cachedCarousels
-              .map(
-                (json) => CarouselModel.fromJsonMap(json),
-              )
+              .map((json) => CarouselModel.fromJsonMap(json))
               .where((carousel) => carousel.isActive)
               .toList();
           _carousels.sort((a, b) => a.order.compareTo(b.order));
@@ -555,9 +645,7 @@ class ProductProvider with ChangeNotifier {
         final cachedCarousels = await DatabaseService.getCarousels();
         if (cachedCarousels.isNotEmpty) {
           _carousels = cachedCarousels
-              .map(
-                (json) => CarouselModel.fromJsonMap(json),
-              )
+              .map((json) => CarouselModel.fromJsonMap(json))
               .where((carousel) => carousel.isActive)
               .toList();
           _carousels.sort((a, b) => a.order.compareTo(b.order));
@@ -604,10 +692,7 @@ class ProductProvider with ChangeNotifier {
         final cachedFlashSales = await DatabaseService.getFlashSales();
         if (cachedFlashSales.isNotEmpty) {
           _flashSales = cachedFlashSales
-              .map(
-                (json) =>
-                    FlashSaleModel.fromJsonMap(json),
-              )
+              .map((json) => FlashSaleModel.fromJsonMap(json))
               .where((flashSale) => flashSale.isActive)
               .toList();
           _flashSales.sort((a, b) => a.order.compareTo(b.order));
@@ -620,10 +705,7 @@ class ProductProvider with ChangeNotifier {
             );
             if (cachedProducts.isNotEmpty) {
               _flashSaleProducts = cachedProducts
-                  .map(
-                    (json) =>
-                        ProductModel.fromJsonMap(json),
-                  )
+                  .map((json) => ProductModel.fromJsonMap(json))
                   .toList();
             }
           }
@@ -653,9 +735,7 @@ class ProductProvider with ChangeNotifier {
               (json) =>
                   FlashSaleModel.fromJsonMap(json as Map<String, dynamic>),
             )
-            .where(
-              (flashSale) => flashSale.isActive,
-            )
+            .where((flashSale) => flashSale.isActive)
             .toList();
 
         // Sort by order
@@ -712,9 +792,9 @@ class ProductProvider with ChangeNotifier {
                   )
                   .toList();
               // Save products to cache
-              await DatabaseService.saveProducts(productData
-                  .map((e) => e as Map<String, dynamic>)
-                  .toList());
+              await DatabaseService.saveProducts(
+                productData.map((e) => e as Map<String, dynamic>).toList(),
+              );
             }
           }
         }
@@ -731,10 +811,7 @@ class ProductProvider with ChangeNotifier {
         final cachedFlashSales = await DatabaseService.getFlashSales();
         if (cachedFlashSales.isNotEmpty) {
           _flashSales = cachedFlashSales
-              .map(
-                (json) =>
-                    FlashSaleModel.fromJsonMap(json),
-              )
+              .map((json) => FlashSaleModel.fromJsonMap(json))
               .where((flashSale) => flashSale.isActive)
               .toList();
           _flashSales.sort((a, b) => a.order.compareTo(b.order));
@@ -769,6 +846,45 @@ class ProductProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('[ProductProvider] Background refresh failed: $e');
     }
+  }
+
+  /// Load best selling products for home screen (uses all products with limit).
+  Future<void> loadBestSellingProducts() async {
+    _isLoadingBestSelling = true;
+    notifyListeners();
+    try {
+      final response = await ApiService.getAllProducts(page: 1, limit: 20);
+      if (response['success'] == true && response['data'] != null) {
+        final raw = response['data'];
+        List<dynamic> productData = [];
+        if (raw is List) {
+          productData = raw;
+        } else if (raw is Map) {
+          if (raw['data'] is List) {
+            productData = raw['data'] as List<dynamic>;
+          } else if (raw['products'] is List) {
+            productData = raw['products'] as List<dynamic>;
+          } else if (raw['results'] is List) {
+            productData = raw['results'] as List<dynamic>;
+          }
+        }
+        _bestSellingProducts = productData
+            .map((json) {
+              try {
+                return ProductModel.fromJsonMap(json as Map<String, dynamic>);
+              } catch (_) {
+                return null;
+              }
+            })
+            .whereType<ProductModel>()
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[ProductProvider] loadBestSellingProducts failed: $e');
+      _bestSellingProducts = [];
+    }
+    _isLoadingBestSelling = false;
+    notifyListeners();
   }
 
   List<ProductModel> _flashSaleProductsList = [];
@@ -860,7 +976,7 @@ class ProductProvider with ChangeNotifier {
               if (value is num) return value.toInt();
               return defaultValue;
             }
-            
+
             _flashSaleTotalDocuments = safeToInt(meta['totalDocuments'], 0);
             _flashSaleTotalPages = safeToInt(meta['totalPages'], 1);
             _hasMoreFlashSaleProducts =
@@ -959,16 +1075,16 @@ class ProductProvider with ChangeNotifier {
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> productData = response['data'] as List<dynamic>;
         final newProducts = productData
-            .map(
-              (json) {
-                try {
-                  return ProductModel.fromJsonMap(json as Map<String, dynamic>);
-                } catch (e) {
-                  debugPrint('[ProductProvider.searchProductsByTags] Error parsing product: $e');
-                  return null;
-                }
-              },
-            )
+            .map((json) {
+              try {
+                return ProductModel.fromJsonMap(json as Map<String, dynamic>);
+              } catch (e) {
+                debugPrint(
+                  '[ProductProvider.searchProductsByTags] Error parsing product: $e',
+                );
+                return null;
+              }
+            })
             .whereType<ProductModel>()
             .toList();
 
@@ -995,7 +1111,7 @@ class ProductProvider with ChangeNotifier {
             if (value is num) return value.toInt();
             return defaultValue;
           }
-          
+
           _searchTotalDocuments = safeToInt(meta['totalDocuments'], 0);
           _searchTotalPages = safeToInt(meta['totalPages'], 1);
           _hasMoreSearchResults = _searchCurrentPage < _searchTotalPages;

@@ -25,6 +25,7 @@ void main() async {
     // Continue app startup even if database fails
   }
   
+  
   // Initialize Sync Service for online/offline data synchronization
   try {
     await SyncService().initialize();

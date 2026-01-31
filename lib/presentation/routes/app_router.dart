@@ -11,6 +11,7 @@ import '../screens/auth/otp_verification_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/home/all_carousels_screen.dart';
 import '../screens/product/flash_sale_detail_screen.dart';
+import '../screens/product/flash_sale_info_detail_screen.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../screens/product/all_flash_sales_screen.dart';
 import '../screens/product/flash_sale_products_screen.dart';
@@ -41,14 +42,15 @@ class AppRouter {
         // Check if user has saved token
         final accessToken = await StorageService.getAccessToken();
         final isAuthenticated = accessToken != null;
-        
-        final isAuthPage = state.uri.path == '/splash' ||
-                           state.uri.path == '/login' ||
-                           state.uri.path == '/register' ||
-                           state.uri.path == '/get-started' || 
-                           state.uri.path == '/create-account' ||
-                           state.uri.path == '/forgot-password' ||
-                           state.uri.path == '/otp-verification';
+
+        final isAuthPage =
+            state.uri.path == '/splash' ||
+            state.uri.path == '/login' ||
+            state.uri.path == '/register' ||
+            state.uri.path == '/get-started' ||
+            state.uri.path == '/create-account' ||
+            state.uri.path == '/forgot-password' ||
+            state.uri.path == '/otp-verification';
 
         // If user is authenticated and tries to access auth pages, redirect to home
         if (isAuthenticated && isAuthPage) {
@@ -57,7 +59,21 @@ class AppRouter {
 
         // Allow access to home and public pages even if not authenticated
         // Only redirect to login for protected pages (profile, settings, etc.)
-        final protectedPages = ['/profile', '/edit-profile', '/settings', '/change-password', '/coupons', '/cart', '/checkout', '/shipping-address', '/order-history', '/my-reviews', '/wishlist', '/contact-us', '/all-products'];
+        final protectedPages = [
+          '/profile',
+          '/edit-profile',
+          '/settings',
+          '/change-password',
+          '/coupons',
+          '/cart',
+          '/checkout',
+          '/shipping-address',
+          '/order-history',
+          '/my-reviews',
+          '/wishlist',
+          '/contact-us',
+          '/all-products',
+        ];
         if (!isAuthenticated && protectedPages.contains(state.uri.path)) {
           return '/splash';
         }
@@ -65,179 +81,191 @@ class AppRouter {
         return null;
       },
       routes: [
-      GoRoute(
-        path: '/splash',
-        name: 'splash',
-        builder: (context, state) => const SplashScreen(),
-      ),
-      GoRoute(
-        path: '/login',
-        name: 'login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        name: 'register',
-        builder: (context, state) => const RegisterScreen(),
-      ),
-      GoRoute(
-        path: '/get-started',
-        name: 'get-started',
-        builder: (context, state) => const GetStartedScreen(),
-      ),
-      GoRoute(
-        path: '/create-account',
-        name: 'create-account',
-        builder: (context, state) => const CreateAccountScreen(),
-      ),
-      GoRoute(
-        path: '/forgot-password',
-        name: 'forgot-password',
-        builder: (context, state) => const ForgotPasswordScreen(),
-      ),
-      GoRoute(
-        path: '/otp-verification',
-        name: 'otp-verification',
-        builder: (context, state) {
-          final email = state.uri.queryParameters['email'] ?? 
-                       (state.extra as String? ?? '');
-          return OtpVerificationScreen(email: email);
-        },
-      ),
-      GoRoute(
-        path: '/home',
-        name: 'home',
-        builder: (context, state) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/profile',
-        name: 'profile',
-        builder: (context, state) => const ProfileScreen(),
-      ),
-      GoRoute(
-        path: '/edit-profile',
-        name: 'edit-profile',
-        builder: (context, state) => const EditProfileScreen(),
-      ),
-      GoRoute(
-        path: '/settings',
-        name: 'settings',
-        builder: (context, state) => const SettingsScreen(),
-      ),
-      GoRoute(
-        path: '/change-password',
-        name: 'change-password',
-        builder: (context, state) => const ChangePasswordScreen(),
-      ),
-      GoRoute(
-        path: '/coupons',
-        name: 'coupons',
-        builder: (context, state) => const CouponsScreen(),
-      ),
-      GoRoute(
-        path: '/contact-us',
-        name: 'contact-us',
-        builder: (context, state) => const ContactUsScreen(),
-      ),
-      GoRoute(
-        path: '/cart',
-        name: 'cart',
-        builder: (context, state) => const CartScreen(),
-      ),
-      GoRoute(
-        path: '/checkout',
-        name: 'checkout',
-        builder: (context, state) => const CheckoutScreen(),
-      ),
-      GoRoute(
-        path: '/shipping-address',
-        name: 'shipping-address',
-        builder: (context, state) => const ShippingAddressScreen(),
-      ),
-      GoRoute(
-        path: '/order-history',
-        name: 'order-history',
-        builder: (context, state) => const OrderHistoryScreen(),
-      ),
-      GoRoute(
-        path: '/my-reviews',
-        name: 'my-reviews',
-        builder: (context, state) => const MyReviewsScreen(),
-      ),
-      GoRoute(
-        path: '/wishlist',
-        name: 'wishlist',
-        builder: (context, state) => const WishlistScreen(),
-      ),
-      GoRoute(
-        path: '/all-carousels',
-        name: 'all-carousels',
-        builder: (context, state) => const AllCarouselsScreen(),
-      ),
-      GoRoute(
-        path: '/all-categories',
-        name: 'all-categories',
-        builder: (context, state) => const AllCategoriesScreen(),
-      ),
-      GoRoute(
-        path: '/category-products/:categoryId',
-        name: 'category-products',
-        builder: (context, state) {
-          final categoryId = state.pathParameters['categoryId'] ?? '';
-          return CategoryProductsScreen(categoryId: categoryId);
-        },
-      ),
-      GoRoute(
-        path: '/all-flash-sales',
-        name: 'all-flash-sales',
-        builder: (context, state) => const AllFlashSalesScreen(),
-      ),
-      GoRoute(
-        path: '/flash-sale-products/:saleId',
-        name: 'flash-sale-products',
-        builder: (context, state) {
-          final saleId = state.pathParameters['saleId'] ?? '';
-          return FlashSaleProductsScreen(saleId: saleId);
-        },
-      ),
-      GoRoute(
-        path: '/product-detail/:id',
-        name: 'product-detail',
-        builder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          return ProductDetailScreen(productId: id);
-        },
-      ),
-      GoRoute(
-        path: '/product-search',
-        name: 'product-search',
-        builder: (context, state) => const ProductSearchScreen(),
-      ),
-      GoRoute(
-        path: '/all-products',
-        name: 'all-products',
-        builder: (context, state) => const AllProductsScreen(),
-      ),
-      GoRoute(
-        path: '/flash-sale/:id',
-        name: 'flash-sale-detail',
-        builder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          return Builder(
-            builder: (context) {
-              final productProvider = Provider.of<ProductProvider>(context, listen: false);
-              final product = productProvider.getProductById(id);
-              if (product == null) {
-                return const Scaffold(
-                  body: Center(child: Text('Product not found')),
+        GoRoute(
+          path: '/splash',
+          name: 'splash',
+          builder: (context, state) => const SplashScreen(),
+        ),
+        GoRoute(
+          path: '/login',
+          name: 'login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/register',
+          name: 'register',
+          builder: (context, state) => const RegisterScreen(),
+        ),
+        GoRoute(
+          path: '/get-started',
+          name: 'get-started',
+          builder: (context, state) => const GetStartedScreen(),
+        ),
+        GoRoute(
+          path: '/create-account',
+          name: 'create-account',
+          builder: (context, state) => const CreateAccountScreen(),
+        ),
+        GoRoute(
+          path: '/forgot-password',
+          name: 'forgot-password',
+          builder: (context, state) => const ForgotPasswordScreen(),
+        ),
+        GoRoute(
+          path: '/otp-verification',
+          name: 'otp-verification',
+          builder: (context, state) {
+            final email =
+                state.uri.queryParameters['email'] ??
+                (state.extra as String? ?? '');
+            return OtpVerificationScreen(email: email);
+          },
+        ),
+        GoRoute(
+          path: '/home',
+          name: 'home',
+          builder: (context, state) => const HomeScreen(),
+        ),
+        GoRoute(
+          path: '/profile',
+          name: 'profile',
+          builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: '/edit-profile',
+          name: 'edit-profile',
+          builder: (context, state) => const EditProfileScreen(),
+        ),
+        GoRoute(
+          path: '/settings',
+          name: 'settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/change-password',
+          name: 'change-password',
+          builder: (context, state) => const ChangePasswordScreen(),
+        ),
+        GoRoute(
+          path: '/coupons',
+          name: 'coupons',
+          builder: (context, state) => const CouponsScreen(),
+        ),
+        GoRoute(
+          path: '/contact-us',
+          name: 'contact-us',
+          builder: (context, state) => const ContactUsScreen(),
+        ),
+        GoRoute(
+          path: '/cart',
+          name: 'cart',
+          builder: (context, state) => const CartScreen(),
+        ),
+        GoRoute(
+          path: '/checkout',
+          name: 'checkout',
+          builder: (context, state) => const CheckoutScreen(),
+        ),
+        GoRoute(
+          path: '/shipping-address',
+          name: 'shipping-address',
+          builder: (context, state) => const ShippingAddressScreen(),
+        ),
+        GoRoute(
+          path: '/order-history',
+          name: 'order-history',
+          builder: (context, state) => const OrderHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/my-reviews',
+          name: 'my-reviews',
+          builder: (context, state) => const MyReviewsScreen(),
+        ),
+        GoRoute(
+          path: '/wishlist',
+          name: 'wishlist',
+          builder: (context, state) => const WishlistScreen(),
+        ),
+        GoRoute(
+          path: '/all-carousels',
+          name: 'all-carousels',
+          builder: (context, state) => const AllCarouselsScreen(),
+        ),
+        GoRoute(
+          path: '/all-categories',
+          name: 'all-categories',
+          builder: (context, state) => const AllCategoriesScreen(),
+        ),
+        GoRoute(
+          path: '/category-products/:categoryId',
+          name: 'category-products',
+          builder: (context, state) {
+            final categoryId = state.pathParameters['categoryId'] ?? '';
+            return CategoryProductsScreen(categoryId: categoryId);
+          },
+        ),
+        GoRoute(
+          path: '/all-flash-sales',
+          name: 'all-flash-sales',
+          builder: (context, state) => const AllFlashSalesScreen(),
+        ),
+        GoRoute(
+          path: '/flash-sale-products/:saleId',
+          name: 'flash-sale-products',
+          builder: (context, state) {
+            final saleId = state.pathParameters['saleId'] ?? '';
+            return FlashSaleProductsScreen(saleId: saleId);
+          },
+        ),
+        GoRoute(
+          path: '/flash-sale-info/:saleId',
+          name: 'flash-sale-info',
+          builder: (context, state) {
+            final saleId = state.pathParameters['saleId'] ?? '';
+            return FlashSaleInfoDetailScreen(saleId: saleId);
+          },
+        ),
+        GoRoute(
+          path: '/product-detail/:id',
+          name: 'product-detail',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return ProductDetailScreen(productId: id);
+          },
+        ),
+        GoRoute(
+          path: '/product-search',
+          name: 'product-search',
+          builder: (context, state) => const ProductSearchScreen(),
+        ),
+        GoRoute(
+          path: '/all-products',
+          name: 'all-products',
+          builder: (context, state) => const AllProductsScreen(),
+        ),
+        GoRoute(
+          path: '/flash-sale/:id',
+          name: 'flash-sale-detail',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return Builder(
+              builder: (context) {
+                final productProvider = Provider.of<ProductProvider>(
+                  context,
+                  listen: false,
                 );
-              }
-              return FlashSaleDetailScreen(product: product);
-            },
-          );
-        },
-      ),
-    ],
+                final product = productProvider.getProductById(id);
+                if (product == null) {
+                  return const Scaffold(
+                    body: Center(child: Text('Product not found')),
+                  );
+                }
+                return FlashSaleDetailScreen(product: product);
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 

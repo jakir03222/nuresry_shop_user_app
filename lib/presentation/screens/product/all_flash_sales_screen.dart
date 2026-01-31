@@ -11,11 +11,18 @@ class AllFlashSalesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: AppColors.flashSaleRed,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textWhite),
+          onPressed: () => context.pop(),
+        ),
         title: const Text(
           'Flash Sale',
           style: TextStyle(
@@ -29,17 +36,20 @@ class AllFlashSalesScreen extends StatelessWidget {
       body: Consumer<ProductProvider>(
         builder: (context, productProvider, child) {
           if (productProvider.isLoading && productProvider.flashSales.isEmpty) {
-            return ListView.builder(
+            return GridView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: 3,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isTablet ? 3 : 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.65,
+              ),
+              itemCount: 6,
               itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: const ShimmerLoader(
-                    width: double.infinity,
-                    height: 180,
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                  ),
+                return const ShimmerLoader(
+                  width: double.infinity,
+                  height: 200,
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
                 );
               },
             );
@@ -68,9 +78,12 @@ class AllFlashSalesScreen extends StatelessWidget {
             );
           }
 
+          final flashSales = productProvider.flashSales;
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Flash Sale Banner
                 Container(
@@ -101,16 +114,28 @@ class AllFlashSalesScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Flash Sales List
-                ...productProvider.flashSales.map((flashSale) {
-                  return FlashSalePromotionCard(
-                    flashSale: flashSale,
-                    onTap: () {
-                      context.push('/flash-sale-products/${flashSale.id}');
-                    },
-                  );
-                }),
+                const SizedBox(height: 24),
+                // Flash Sales Grid - same card design as image
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isTablet ? 3 : 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.65,
+                  ),
+                  itemCount: flashSales.length,
+                  itemBuilder: (context, index) {
+                    final flashSale = flashSales[index];
+                    return FlashSalePromotionCard(
+                      flashSale: flashSale,
+                      onTap: () {
+                        context.push('/flash-sale-info/${flashSale.id}');
+                      },
+                    );
+                  },
+                ),
               ],
             ),
           );

@@ -1,134 +1,223 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../data/models/flash_sale_model.dart';
 
-class FlashSalePromotionCard extends StatelessWidget {
+/// Flash sale promotion card - matches reference design:
+/// - White card with shadow and rounded corners
+/// - Product/deal image on top
+/// - Discount badge (top-left): light grey bg, dark border - X% or X৳
+/// - Favorite icon (bottom-right of image)
+/// - Title below image
+/// - Discount text as price area
+/// - "Add to cart" button with cart icon (same color as other cards)
+class FlashSalePromotionCard extends StatefulWidget {
   final FlashSaleModel flashSale;
   final VoidCallback? onTap;
+  final VoidCallback? onFavoriteTap;
 
   const FlashSalePromotionCard({
     super.key,
     required this.flashSale,
     this.onTap,
+    this.onFavoriteTap,
   });
 
   @override
+  State<FlashSalePromotionCard> createState() => _FlashSalePromotionCardState();
+}
+
+class _FlashSalePromotionCardState extends State<FlashSalePromotionCard> {
+  bool _isFavorite = false;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap ?? () {
-        context.push('/flash-sale-products/${flashSale.id}');
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        height: 180,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: CachedNetworkImage(
-                imageUrl: flashSale.image,
-                fit: BoxFit.cover,
-                progressIndicatorBuilder: (context, url, downloadProgress) => Container(
-                  color: AppColors.borderGrey,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: downloadProgress.progress,
-                      color: AppColors.primaryBlue,
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: AppColors.flashSaleRed,
-                  child: const Icon(
-                    Icons.flash_on,
-                    size: 50,
-                    color: AppColors.textWhite,
-                  ),
-                ),
+    final flashSale = widget.flashSale;
+
+    // Discount badge text: percentage shows "X%", fixed shows "X৳"
+    final discountBadgeText = flashSale.discountType == 'percentage'
+        ? '${flashSale.discountValue}%'
+        : '${flashSale.discountValue}${AppConstants.currencySymbol}';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.backgroundWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderGrey.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Image section - tap goes to flash sale products
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onTap,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
               ),
-            ),
-            // Gradient Overlay
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.black.withOpacity(0.3),
-                    Colors.black.withOpacity(0.6),
-                  ],
-                ),
-              ),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Stack(
+                clipBehavior: Clip.antiAlias,
                 children: [
-                  // Discount Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.flashSaleRed,
-                      borderRadius: BorderRadius.circular(20),
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
                     ),
-                    child: Text(
-                      flashSale.discountText,
-                      style: const TextStyle(
-                        color: AppColors.textWhite,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                    child: CachedNetworkImage(
+                      imageUrl: flashSale.image,
+                      width: double.infinity,
+                      height: 130,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        height: 130,
+                        color: AppColors.borderGrey,
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        height: 130,
+                        color: AppColors.borderGrey,
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 40,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
-                  // Title and Description
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        flashSale.title,
+                  // Discount badge - top-left, light grey with dark border
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.textSecondary.withOpacity(0.6),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        discountBadgeText,
                         style: const TextStyle(
-                          color: AppColors.textWhite,
-                          fontSize: 22,
+                          color: AppColors.textPrimary,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        flashSale.description,
-                        style: TextStyle(
-                          color: AppColors.textWhite.withOpacity(0.9),
-                          fontSize: 14,
+                    ),
+                  ),
+                  // Favorite icon - bottom-right
+                  Positioned(
+                    bottom: 6,
+                    right: 6,
+                    child: Material(
+                      color: Colors.white.withOpacity(0.8),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => _isFavorite = !_isFavorite);
+                          widget.onFavoriteTap?.call();
+                        },
+                        customBorder: const CircleBorder(),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            _isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            size: 20,
+                            color: _isFavorite
+                                ? AppColors.accentRed
+                                : AppColors.textPrimary,
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          // Content - title and discount text
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  flashSale.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  flashSale.discountText,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.flashSaleOrange,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          // Add to cart button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: widget.onTap,
+                icon: const Icon(
+                  Icons.shopping_cart,
+                  size: 18,
+                  color: AppColors.textWhite,
+                ),
+                label: const Text(
+                  'Add to cart',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: AppColors.textWhite,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  minimumSize: Size.zero,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
