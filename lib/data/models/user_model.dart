@@ -12,6 +12,7 @@ class UserModel implements BaseModel {
   final DateTime? updatedAt;
   final String? mobile;
   final String? profileImage;
+  final String? avatarId;
 
   UserModel({
     required this.id,
@@ -25,6 +26,7 @@ class UserModel implements BaseModel {
     this.updatedAt,
     this.mobile,
     this.profileImage,
+    this.avatarId,
   });
 
   // Getter for backward compatibility
@@ -44,6 +46,7 @@ class UserModel implements BaseModel {
       'updatedAt': updatedAt?.toIso8601String(),
       'mobile': mobile,
       'profileImage': profileImage,
+      'avatarId': avatarId,
     };
   }
 
@@ -55,10 +58,12 @@ class UserModel implements BaseModel {
   // API: GET {{baseUrl}}/users/profile → data: _id, name, emailOrPhone, role, status, avatarId{_id,name,imageUrl}, profilePicture
   static UserModel fromJsonMap(Map<String, dynamic> json) {
     final profilePicture = json['profilePicture'];
-    final avatarId = json['avatarId'];
+    final avatarIdObj = json['avatarId'];
+    String? avatarId;
     String? avatarImageUrl;
-    if (avatarId is Map<String, dynamic>) {
-      avatarImageUrl = avatarId['imageUrl'] as String?;
+    if (avatarIdObj is Map<String, dynamic>) {
+      avatarId = avatarIdObj['_id']?.toString();
+      avatarImageUrl = avatarIdObj['imageUrl'] as String?;
     }
     final profileImage = profilePicture ?? avatarImageUrl ?? json['profileImage'];
 
@@ -78,6 +83,7 @@ class UserModel implements BaseModel {
           : null,
       mobile: json['phone'] ?? json['mobile'],
       profileImage: profileImage is String ? profileImage : null,
+      avatarId: avatarId,
     );
   }
 
@@ -93,6 +99,7 @@ class UserModel implements BaseModel {
     DateTime? updatedAt,
     String? mobile,
     String? profileImage,
+    String? avatarId,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -106,6 +113,7 @@ class UserModel implements BaseModel {
       updatedAt: updatedAt ?? this.updatedAt,
       mobile: mobile ?? this.mobile,
       profileImage: profileImage ?? this.profileImage,
+      avatarId: avatarId ?? this.avatarId,
     );
   }
 }

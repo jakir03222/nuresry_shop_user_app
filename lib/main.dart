@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/database_service.dart';
+import 'core/services/sync_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/product_provider.dart';
 import 'presentation/providers/cart_provider.dart';
@@ -15,12 +16,21 @@ import 'presentation/routes/app_router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize SQLite database
+  // Initialize SQLite database for offline cache
   try {
     await DatabaseService.initialize();
+    debugPrint('[main] SQLite database initialized');
   } catch (e) {
     debugPrint('[main] Database initialization failed: $e');
     // Continue app startup even if database fails
+  }
+  
+  // Initialize Sync Service for online/offline data synchronization
+  try {
+    await SyncService().initialize();
+    debugPrint('[main] SyncService initialized');
+  } catch (e) {
+    debugPrint('[main] SyncService initialization failed: $e');
   }
   
   runApp(const MyApp());

@@ -23,12 +23,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _mobileController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   File? _selectedImage;
   String? _selectedAvatarId;
   List<AvatarModel> _avatars = [];
-  bool _isLoadingAvatars = false;
   bool _isLoading = false;
   bool _isLoadingProfile = false;
 
@@ -37,28 +35,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProfile();
-      _loadAvatars();
+      _loadAvatarsForPreview();
     });
   }
 
-  Future<void> _loadAvatars() async {
-    setState(() => _isLoadingAvatars = true);
+  Future<void> _loadAvatarsForPreview() async {
     try {
       final response = await ApiService.getAvatars(page: 1, limit: 10);
       if (mounted && response['success'] == true && response['data'] != null) {
-        final data = response['data'] as List<dynamic>;
+        final data = response['data'];
+        List<dynamic> dataList;
+        if (data is List) {
+          dataList = data;
+        } else if (data is Map && data['results'] != null) {
+          dataList = data['results'] as List<dynamic>;
+        } else if (data is Map && data['avatars'] != null) {
+          dataList = data['avatars'] as List<dynamic>;
+        } else {
+          dataList = [];
+        }
         setState(() {
-          _avatars = data
+          _avatars = dataList
               .map((e) => AvatarModel.fromJson(e as Map<String, dynamic>))
               .where((a) => a.isActive)
               .toList();
-          _isLoadingAvatars = false;
         });
-      } else {
-        if (mounted) setState(() => _isLoadingAvatars = false);
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoadingAvatars = false);
+      debugPrint('[EditProfile] _loadAvatarsForPreview error: $e');
     }
   }
 
@@ -75,7 +79,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (user != null && mounted) {
         _fullNameController.text = user.name;
         _emailController.text = user.email;
-        _mobileController.text = user.mobile ?? '';
+        if (user.avatarId != null && user.avatarId!.isNotEmpty) {
+          _selectedAvatarId = user.avatarId;
+          _selectedImage = null;
+        }
       }
     } catch (e, stackTrace) {
       debugPrint('[EditProfile] loadProfile error: $e');
@@ -128,11 +135,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
   }
 
+  void _showChangeProfilePictureDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => _ChangeProfilePictureDialog(
+        selectedAvatarId: _selectedAvatarId,
+        onAvatarSelected: (avatar) {
+          _selectAvatar(avatar);
+          Navigator.of(dialogContext).pop();
+        },
+        onGalleryTap: () async {
+          Navigator.of(dialogContext).pop();
+          await _pickImageFromGallery();
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
-    _mobileController.dispose();
     super.dispose();
   }
 
@@ -151,7 +174,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final success = await authProvider.updateProfile(
         name: _fullNameController.text.trim(),
         email: _emailController.text.trim(),
-        mobile: _mobileController.text.trim(),
+        mobile: null,
         avatarId: _selectedAvatarId,
         profilePicture: _selectedImage,
       );
@@ -227,177 +250,135 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 24),
-                    // Profile Image Section (preview: selected avatar, gallery image, or current)
+                    // Profile Image Section with Edit Icon
                     Center(
-                      child: Consumer<AuthProvider>(
-                        builder: (context, authProvider, _) {
-                          final user = authProvider.user;
-                          final profileImageUrl = user?.profileImage;
-                          String? displayImageUrl;
-                          if (_selectedAvatarId != null) {
-                            for (var a in _avatars) {
-                              if (a.id == _selectedAvatarId) {
-                                displayImageUrl = a.imageUrl;
-                                break;
+                      child: GestureDetector(
+                        onTap: _showChangeProfilePictureDialog,
+                        child: Consumer<AuthProvider>(
+                          builder: (context, authProvider, _) {
+                            final user = authProvider.user;
+                            final profileImageUrl = user?.profileImage;
+                            String? displayImageUrl;
+                            if (_selectedAvatarId != null) {
+                              for (var a in _avatars) {
+                                if (a.id == _selectedAvatarId) {
+                                  displayImageUrl = a.fullImageUrl;
+                                  break;
+                                }
                               }
                             }
-                          }
-                          return Stack(
-                            children: [
-                              Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.borderGrey,
-                                  border: Border.all(
-                                    color: AppColors.primaryBlue,
-                                    width: 3,
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.borderGrey,
+                                    border: Border.all(
+                                      color: AppColors.primaryBlue,
+                                      width: 2,
+                                    ),
                                   ),
-                                ),
-                                child: ClipOval(
-                                  child: _selectedImage != null
-                                      ? Image.file(
-                                          _selectedImage!,
-                                          fit: BoxFit.cover,
-                                          width: 120,
-                                          height: 120,
-                                        )
-                                      : displayImageUrl != null && displayImageUrl.isNotEmpty
-                                          ? CachedNetworkImage(
-                                              imageUrl: displayImageUrl,
-                                              fit: BoxFit.cover,
-                                              width: 120,
-                                              height: 120,
-                                              placeholder: (context, url) => const Center(
-                                                child: CircularProgressIndicator(strokeWidth: 2),
-                                              ),
-                                              errorWidget: (context, url, error) => const Icon(
-                                                Icons.person,
-                                                size: 60,
-                                                color: AppColors.primaryBlue,
-                                              ),
-                                            )
-                                          : profileImageUrl != null && profileImageUrl.isNotEmpty
-                                              ? CachedNetworkImage(
-                                                  imageUrl: profileImageUrl,
-                                                  fit: BoxFit.cover,
-                                                  width: 120,
-                                                  height: 120,
-                                                  placeholder: (context, url) => const Center(
-                                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                                  ),
-                                                  errorWidget: (context, url, error) => const Icon(
-                                                    Icons.person,
-                                                    size: 60,
-                                                    color: AppColors.primaryBlue,
-                                                  ),
-                                                )
-                                              : const Icon(
+                                  child: ClipOval(
+                                    child: _selectedImage != null
+                                        ? Image.file(
+                                            _selectedImage!,
+                                            fit: BoxFit.cover,
+                                            width: 64,
+                                            height: 64,
+                                          )
+                                        : displayImageUrl != null &&
+                                                displayImageUrl.isNotEmpty
+                                            ? CachedNetworkImage(
+                                                imageUrl: displayImageUrl,
+                                                fit: BoxFit.cover,
+                                                width: 64,
+                                                height: 64,
+                                                placeholder: (context, url) =>
+                                                    const Center(
+                                                  child: CircularProgressIndicator(
+                                                      strokeWidth: 2),
+                                                ),
+                                                errorWidget:
+                                                    (context, url, error) =>
+                                                        const Icon(
                                                   Icons.person,
-                                                  size: 60,
+                                                  size: 32,
                                                   color: AppColors.primaryBlue,
                                                 ),
+                                              )
+                                            : profileImageUrl != null &&
+                                                    profileImageUrl.isNotEmpty
+                                                ? CachedNetworkImage(
+                                                    imageUrl: profileImageUrl,
+                                                    fit: BoxFit.cover,
+                                                    width: 64,
+                                                    height: 64,
+                                                    placeholder:
+                                                        (context, url) =>
+                                                            const Center(
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                              strokeWidth: 2),
+                                                    ),
+                                                    errorWidget:
+                                                        (context, url, error) =>
+                                                            const Icon(
+                                                      Icons.person,
+                                                      size: 32,
+                                                      color: AppColors
+                                                          .primaryBlue,
+                                                    ),
+                                                  )
+                                                : const Icon(
+                                                    Icons.person,
+                                                    size: 32,
+                                                    color: AppColors.primaryBlue,
+                                                  ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          );
-                        },
+                                // Edit icon overlay
+                                Positioned(
+                                  right: -4,
+                                  bottom: -4,
+                                  child: GestureDetector(
+                                    onTap: _showChangeProfilePictureDialog,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryBlue,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.backgroundWhite,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.edit_rounded,
+                                        size: 14,
+                                        color: AppColors.textWhite,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Change profile picture',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Avatars from API: GET {{baseUrl}}/avatars?page=1&limit=10
-                    const Text(
-                      'Choose an avatar',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_isLoadingAvatars)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    else if (_avatars.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundWhite,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.borderGrey),
-                        ),
-                        child: const Text(
-                          'No avatars available',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      )
-                    else
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          childAspectRatio: 0.95,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                        ),
-                        itemCount: _avatars.length,
-                        itemBuilder: (context, index) {
-                          final avatar = _avatars[index];
-                          final isSelected = _selectedAvatarId == avatar.id;
-                          return GestureDetector(
-                            onTap: () => _selectAvatar(avatar),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isSelected ? AppColors.primaryBlue : AppColors.borderGrey,
-                                  width: isSelected ? 3 : 1,
-                                ),
-                              ),
-                              child: ClipOval(
-                                child: CachedNetworkImage(
-                                  imageUrl: avatar.imageUrl,
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => const Center(
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                  errorWidget: (context, url, error) => const Icon(Icons.person),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    const SizedBox(height: 16),
-                    // Gallery option
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _pickImageFromGallery,
-                        icon: const Icon(Icons.photo_library_outlined, size: 20),
-                        label: const Text('Choose from Gallery'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primaryBlue,
-                          side: const BorderSide(color: AppColors.primaryBlue),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                    GestureDetector(
+                      onTap: _showChangeProfilePictureDialog,
+                      child: const Text(
+                        'Change profile picture',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primaryBlue,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -412,20 +393,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 16),
               CustomTextField(
                 controller: _emailController,
-                label: 'Email',
-                hintText: 'Enter your email',
-                prefixIcon: Icons.email,
-                keyboardType: TextInputType.emailAddress,
-                validator: Validators.validateEmail,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _mobileController,
-                label: 'Mobile (optional)',
-                hintText: 'Enter your mobile number',
-                prefixIcon: Icons.phone,
-                keyboardType: TextInputType.phone,
-                validator: Validators.validateMobileOptional,
+                label: 'Email or Phone',
+                hintText: 'Enter your email or phone',
+                prefixIcon: Icons.email_outlined,
+                keyboardType: TextInputType.text,
+                validator: Validators.validateEmailOrPhone,
               ),
               const SizedBox(height: 32),
               CustomButton(
@@ -437,6 +409,213 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Dialog that loads avatars from GET {{baseUrl}}/avatars?page=1&limit=10
+/// and shows them - selected image is set as profile picture
+class _ChangeProfilePictureDialog extends StatefulWidget {
+  final String? selectedAvatarId;
+  final void Function(AvatarModel avatar) onAvatarSelected;
+  final VoidCallback onGalleryTap;
+
+  const _ChangeProfilePictureDialog({
+    required this.selectedAvatarId,
+    required this.onAvatarSelected,
+    required this.onGalleryTap,
+  });
+
+  @override
+  State<_ChangeProfilePictureDialog> createState() =>
+      _ChangeProfilePictureDialogState();
+}
+
+class _ChangeProfilePictureDialogState extends State<_ChangeProfilePictureDialog> {
+  List<AvatarModel> _avatars = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatars();
+  }
+
+  Future<void> _loadAvatars() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final response = await ApiService.getAvatars(page: 1, limit: 10);
+      if (!mounted) return;
+      if (response['success'] == true && response['data'] != null) {
+        final data = response['data'];
+        List<dynamic> dataList;
+        if (data is List) {
+          dataList = data;
+        } else if (data is Map && data['results'] != null) {
+          dataList = data['results'] as List<dynamic>;
+        } else if (data is Map && data['avatars'] != null) {
+          dataList = data['avatars'] as List<dynamic>;
+        } else {
+          dataList = [];
+        }
+        setState(() {
+          _avatars = dataList
+              .map((e) => AvatarModel.fromJson(e as Map<String, dynamic>))
+              .where((a) => a.isActive)
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = response['message']?.toString() ?? 'Failed to load avatars';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[AvatarDialog] _loadAvatars error: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dialogWidth = MediaQuery.of(context).size.width * 0.85;
+    const crossAxisCount = 4;
+    const spacing = 10.0;
+    final itemSize = (dialogWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+    return AlertDialog(
+      title: const Text('Change Profile Picture'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                  const SizedBox(height: 12),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: _loadAvatars,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          else if (_avatars.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'No avatars available',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+            )
+          else
+            SizedBox(
+              width: dialogWidth,
+              child: Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                  children: _avatars.map((avatar) {
+                    final isSelected = widget.selectedAvatarId == avatar.id;
+                    final imageUrl = avatar.fullImageUrl;
+                    return SizedBox(
+                      width: itemSize,
+                      height: itemSize,
+                      child: GestureDetector(
+                        onTap: () => widget.onAvatarSelected(avatar),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.primaryBlue
+                                  : AppColors.borderGrey,
+                              width: isSelected ? 3 : 1,
+                            ),
+                          ),
+                          child: ClipOval(
+                            child: imageUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    fit: BoxFit.cover,
+                                    width: itemSize,
+                                    height: itemSize,
+                                    placeholder: (context, url) => const Center(
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                    errorWidget: (context, url, error) => const Icon(
+                                      Icons.person,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    color: AppColors.textSecondary,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+              ),
+            ),
+          if (_avatars.isNotEmpty) const SizedBox(height: 16),
+          const Text(
+            'Or choose from gallery',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.onGalleryTap,
+              icon: const Icon(Icons.photo_library_outlined, size: 20),
+              label: const Text('Choose from Gallery'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+                side: const BorderSide(color: AppColors.primaryBlue),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

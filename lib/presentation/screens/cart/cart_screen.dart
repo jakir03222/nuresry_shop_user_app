@@ -49,90 +49,258 @@ class _CartScreenState extends State<CartScreen> {
       ),
       body: Consumer<CartProvider>(
         builder: (context, cartProvider, child) {
+          // Loading State: Show loading with shimmer effect
           if (cartProvider.isLoading && cartProvider.items.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryBlue,
-              ),
-            );
-          }
-
-          if (cartProvider.errorMessage != null && cartProvider.items.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 80,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    cartProvider.errorMessage ?? 'Failed to load cart',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textSecondary,
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
-                    textAlign: TextAlign.center,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryBlue,
+                        strokeWidth: 3,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => cartProvider.fetchCart(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (cartProvider.items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.shopping_cart_outlined,
-                    size: 100,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   const Text(
-                    'Your cart is empty',
+                    'Loading your cart...',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Add items to your cart',
+                    'Please wait a moment',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => context.go('/home'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                    ),
-                    child: const Text(
-                      'Browse Products',
-                      style: TextStyle(
-                        color: AppColors.textWhite,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                 ],
+              ),
+            );
+          }
+
+          // Error State: Show error with detailed message and retry option
+          if (cartProvider.errorMessage != null && cartProvider.items.isEmpty) {
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Error Icon
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.error_outline_rounded,
+                        size: 60,
+                        color: AppColors.error,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Error Title
+                    const Text(
+                      'Oops! Something went wrong',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    // Error Message
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.error.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        cartProvider.errorMessage ?? 'Failed to load cart',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Action Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => cartProvider.fetchCart(),
+                          icon: const Icon(Icons.refresh_rounded, size: 20),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            foregroundColor: AppColors.textWhite,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: () => context.go('/home'),
+                          icon: const Icon(Icons.home_outlined, size: 20),
+                          label: const Text('Go Home'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primaryBlue,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            side: const BorderSide(
+                              color: AppColors.primaryBlue,
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // Empty Cart State: Show attractive empty state with call-to-action
+          if (cartProvider.items.isEmpty) {
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Empty Cart Illustration
+                    Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withOpacity(0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.shopping_cart_outlined,
+                            size: 90,
+                            color: AppColors.primaryBlue.withOpacity(0.3),
+                          ),
+                          const Positioned(
+                            bottom: 45,
+                            right: 45,
+                            child: Icon(
+                              Icons.add_shopping_cart,
+                              size: 40,
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    // Empty Title
+                    const Text(
+                      'Your cart is empty',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    // Empty Description
+                    const Text(
+                      'Looks like you haven\'t added\nanything to your cart yet',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    // Call-to-Action Button
+                    ElevatedButton.icon(
+                      onPressed: () => context.go('/home'),
+                      icon: const Icon(Icons.explore_outlined, size: 22),
+                      label: const Text('Start Shopping'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: AppColors.textWhite,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Quick Links
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        _buildQuickLink(
+                          context,
+                          icon: Icons.local_offer_outlined,
+                          label: 'Flash Sales',
+                          onTap: () => context.go('/home'),
+                        ),
+                        _buildQuickLink(
+                          context,
+                          icon: Icons.favorite_border,
+                          label: 'Wishlist',
+                          onTap: () => context.push('/wishlist'),
+                        ),
+                        _buildQuickLink(
+                          context,
+                          icon: Icons.category_outlined,
+                          label: 'Categories',
+                          onTap: () => context.go('/home'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -142,10 +310,29 @@ class _CartScreenState extends State<CartScreen> {
               // Cart Items List
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () => cartProvider.fetchCart(),
+                  onRefresh: () async {
+                    await cartProvider.fetchCart();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.white, size: 20),
+                              SizedBox(width: 12),
+                              Text('Cart refreshed'),
+                            ],
+                          ),
+                          backgroundColor: AppColors.success,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
                   color: AppColors.primaryBlue,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: cartProvider.items.length,
                     itemBuilder: (context, index) {
                       final item = cartProvider.items[index];
@@ -353,11 +540,43 @@ class _CartScreenState extends State<CartScreen> {
                             IconButton(
                               icon: const Icon(Icons.remove, size: 18),
                               onPressed: cartItem.quantity > 1
-                                  ? () {
-                                      cartProvider.updateQuantity(
+                                  ? () async {
+                                      final previousError = cartProvider.errorMessage;
+                                      await cartProvider.updateQuantity(
                                         product.id,
                                         cartItem.quantity - 1,
                                       );
+                                      if (context.mounted && 
+                                          cartProvider.errorMessage != null && 
+                                          cartProvider.errorMessage != previousError) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Text(
+                                                    cartProvider.errorMessage ?? 'Failed to update quantity',
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor: AppColors.error,
+                                            behavior: SnackBarBehavior.floating,
+                                            action: SnackBarAction(
+                                              label: 'Retry',
+                                              textColor: Colors.white,
+                                              onPressed: () {
+                                                cartProvider.updateQuantity(
+                                                  product.id,
+                                                  cartItem.quantity - 1,
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }
                                     }
                                   : null,
                               padding: EdgeInsets.zero,
@@ -379,11 +598,43 @@ class _CartScreenState extends State<CartScreen> {
                             IconButton(
                               icon: const Icon(Icons.add, size: 18),
                               onPressed: cartItem.quantity < maxQty
-                                  ? () {
-                                      cartProvider.updateQuantity(
+                                  ? () async {
+                                      final previousError = cartProvider.errorMessage;
+                                      await cartProvider.updateQuantity(
                                         product.id,
                                         cartItem.quantity + 1,
                                       );
+                                      if (context.mounted && 
+                                          cartProvider.errorMessage != null && 
+                                          cartProvider.errorMessage != previousError) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Text(
+                                                    cartProvider.errorMessage ?? 'Failed to update quantity',
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor: AppColors.error,
+                                            behavior: SnackBarBehavior.floating,
+                                            action: SnackBarAction(
+                                              label: 'Retry',
+                                              textColor: Colors.white,
+                                              onPressed: () {
+                                                cartProvider.updateQuantity(
+                                                  product.id,
+                                                  cartItem.quantity + 1,
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }
                                     }
                                   : null,
                               padding: EdgeInsets.zero,
@@ -471,14 +722,7 @@ class _CartScreenState extends State<CartScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
-                cartProvider.removeFromCart(productId);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('$productName removed from cart'),
-                    backgroundColor: AppColors.success,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                _removeCartItem(context, productId, productName, cartProvider);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentRed,
@@ -488,6 +732,100 @@ class _CartScreenState extends State<CartScreen> {
           ],
         );
       },
+    );
+  }
+
+  // Remove cart item with error handling
+  Future<void> _removeCartItem(
+    BuildContext context,
+    String productId,
+    String productName,
+    CartProvider cartProvider,
+  ) async {
+    final previousError = cartProvider.errorMessage;
+    await cartProvider.removeFromCart(productId);
+    
+    if (context.mounted) {
+      // Check if new error occurred
+      if (cartProvider.errorMessage != null && cartProvider.errorMessage != previousError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    cartProvider.errorMessage ?? 'Failed to remove item',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _removeCartItem(context, productId, productName, cartProvider),
+            ),
+          ),
+        );
+      } else {
+        // Success - item removed
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text('$productName removed from cart')),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  // Quick link widget for empty state
+  Widget _buildQuickLink(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundWhite,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.borderGrey,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: AppColors.primaryBlue),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

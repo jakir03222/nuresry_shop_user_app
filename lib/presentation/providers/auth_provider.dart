@@ -4,6 +4,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/services/api_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/database_service.dart';
+import '../../../core/services/sync_service.dart';
 
 class AuthProvider with ChangeNotifier {
   UserModel? _user;
@@ -111,6 +112,9 @@ class AuthProvider with ChangeNotifier {
         
         // Save user profile to SQLite cache
         await DatabaseService.saveUserProfile(userData);
+        
+        // Trigger background sync to cache all user data for offline use
+        SyncService().syncAllData();
         
         notifyListeners();
         return true;
@@ -256,12 +260,18 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Sign out: Clears ALL user data from SharedPreferences and SQLite database
   Future<void> signOut() async {
-    // Clear all storage data
-    await StorageService.clearAll();
+    debugPrint('[AuthProvider] ========== LOGOUT START ==========');
     
-    // Clear user profile from SQLite cache
-    await DatabaseService.clearUserProfile();
+    // Clear all SharedPreferences (tokens, user info)
+    await StorageService.clearAll();
+    debugPrint('[AuthProvider] SharedPreferences cleared');
+    
+    // Clear ALL SQLite database tables (user data + cached data)
+    // This ensures fast app reload after re-login
+    await DatabaseService.clearAllData();
+    debugPrint('[AuthProvider] SQLite database cleared');
     
     // Clear auth state
     _user = null;
@@ -269,6 +279,8 @@ class AuthProvider with ChangeNotifier {
     _errorMessage = null;
     _successMessage = null;
     _isLoading = false;
+    
+    debugPrint('[AuthProvider] ========== LOGOUT COMPLETE ==========');
     notifyListeners();
   }
 

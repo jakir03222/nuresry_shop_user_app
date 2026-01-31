@@ -1353,6 +1353,7 @@ class DatabaseService {
   }
 
   // ========== Clear All Data ==========
+  /// Clear all cached data (used on logout)
   static Future<void> clearAllData() async {
     final db = await database;
     final batch = db.batch();
@@ -1368,10 +1369,29 @@ class DatabaseService {
     batch.delete(tableAddresses);
     batch.delete(tableCoupons);
     batch.delete(tableWishlist);
+    batch.delete(tableUser);
     batch.delete(tableCacheMeta);
 
     await batch.commit(noResult: true);
-    debugPrint('[DatabaseService] Cleared all cached data');
+    debugPrint('[DatabaseService] Cleared all cached data (logout)');
+  }
+
+  /// Clear only user-specific data (cart, orders, wishlist, addresses, user profile)
+  /// Keep products, categories, carousels, flash sales for faster reload
+  static Future<void> clearUserData() async {
+    final db = await database;
+    final batch = db.batch();
+
+    batch.delete(tableCart);
+    batch.delete(tableCartItems);
+    batch.delete(tableOrders);
+    batch.delete(tableOrderItems);
+    batch.delete(tableAddresses);
+    batch.delete(tableWishlist);
+    batch.delete(tableUser);
+
+    await batch.commit(noResult: true);
+    debugPrint('[DatabaseService] Cleared user-specific data');
   }
 
   // ========== Check if data is stale ==========
