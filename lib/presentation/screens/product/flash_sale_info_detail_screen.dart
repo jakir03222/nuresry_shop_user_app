@@ -53,6 +53,7 @@ class _FlashSaleInfoDetailScreenState extends State<FlashSaleInfoDetailScreen> {
     });
     try {
       final response = await ApiService.getFlashSaleById(widget.saleId);
+      if (!mounted) return;
       if (response['success'] == true && response['data'] != null) {
         setState(() {
           _flashSale = FlashSaleModel.fromJsonMap(
@@ -67,6 +68,7 @@ class _FlashSaleInfoDetailScreenState extends State<FlashSaleInfoDetailScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
