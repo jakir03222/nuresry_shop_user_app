@@ -8,32 +8,22 @@ import '../../../data/models/flash_sale_model.dart';
 /// - White card with shadow and rounded corners
 /// - Product/deal image on top
 /// - Discount badge (top-left): light grey bg, dark border - X% or X৳
-/// - Favorite icon (bottom-right of image)
 /// - Title below image
 /// - Discount text as price area
 /// - "Add to cart" button with cart icon (same color as other cards)
-class FlashSalePromotionCard extends StatefulWidget {
+class FlashSalePromotionCard extends StatelessWidget {
   final FlashSaleModel flashSale;
   final VoidCallback? onTap;
-  final VoidCallback? onFavoriteTap;
 
   const FlashSalePromotionCard({
     super.key,
     required this.flashSale,
     this.onTap,
-    this.onFavoriteTap,
   });
 
   @override
-  State<FlashSalePromotionCard> createState() => _FlashSalePromotionCardState();
-}
-
-class _FlashSalePromotionCardState extends State<FlashSalePromotionCard> {
-  bool _isFavorite = false;
-
-  @override
   Widget build(BuildContext context) {
-    final flashSale = widget.flashSale;
+    final flashSale = this.flashSale;
 
     // Discount badge text: percentage shows "X%", fixed shows "X৳"
     final discountBadgeText = flashSale.discountType == 'percentage'
@@ -61,7 +51,7 @@ class _FlashSalePromotionCardState extends State<FlashSalePromotionCard> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: widget.onTap,
+              onTap: onTap,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(12),
               ),
@@ -122,34 +112,6 @@ class _FlashSalePromotionCardState extends State<FlashSalePromotionCard> {
                       ),
                     ),
                   ),
-                  // Favorite icon - bottom-right
-                  Positioned(
-                    bottom: 6,
-                    right: 6,
-                    child: Material(
-                      color: Colors.white.withOpacity(0.8),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: () {
-                          setState(() => _isFavorite = !_isFavorite);
-                          widget.onFavoriteTap?.call();
-                        },
-                        customBorder: const CircleBorder(),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Icon(
-                            _isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            size: 20,
-                            color: _isFavorite
-                                ? AppColors.accentRed
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -190,7 +152,7 @@ class _FlashSalePromotionCardState extends State<FlashSalePromotionCard> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: widget.onTap,
+                onPressed: onTap,
                 icon: const Icon(
                   Icons.shopping_cart,
                   size: 18,
