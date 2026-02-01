@@ -196,7 +196,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: AppColors.borderLight,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
         currentIndex: 2,
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
         onTap: (index) {
           switch (index) {
             case 0:
@@ -209,8 +214,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               break;
           }
         },
-        selectedItemColor: AppColors.primaryBlue,
-        unselectedItemColor: AppColors.textSecondary,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),

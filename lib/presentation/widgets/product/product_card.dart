@@ -54,17 +54,17 @@ class ProductCard extends StatelessWidget {
                   child: CachedNetworkImage(
                     imageUrl: product.imageUrl,
                     width: double.infinity,
-                    height: 110,
+                    height: 120,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
-                      height: 110,
+                      height: 120,
                       color: AppColors.borderGrey,
                       child: const Center(
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 110,
+                      height: 120,
                       color: AppColors.borderGrey,
                       child: const Icon(
                         Icons.image_not_supported_outlined,
@@ -167,9 +167,9 @@ class ProductCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.max,
                   children: [
-                    // Product Name (Title)
-                    Flexible(
-                      fit: FlexFit.loose,
+                    // Product Name (Title) - 2 lines fixed
+                    SizedBox(
+                      height: 36,
                       child: Text(
                         product.name,
                         style: const TextStyle(

@@ -36,16 +36,12 @@ class CategoryShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = (screenWidth * 0.25).clamp(80.0, 120.0);
-    
     return Shimmer.fromColors(
       baseColor: AppColors.borderGrey,
       highlightColor: AppColors.backgroundWhite,
       child: Container(
-        width: cardWidth,
-        height: cardWidth,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.borderGrey,
           borderRadius: BorderRadius.circular(16),

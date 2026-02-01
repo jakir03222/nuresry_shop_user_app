@@ -85,35 +85,8 @@ class AllFlashSalesScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Flash Sale Banner
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.flashSaleRed,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Column(
-                    children: [
-                      Text(
-                        '🔥 LIMITED TIME OFFER 🔥',
-                        style: TextStyle(
-                          color: AppColors.textWhite,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Hurry up! These deals won\'t last long',
-                        style: TextStyle(
-                          color: AppColors.textWhite,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      
+               
                 const SizedBox(height: 24),
                 // Flash Sales Grid - same card design as image
                 GridView.builder(

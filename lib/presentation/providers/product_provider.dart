@@ -80,18 +80,22 @@ class ProductProvider with ChangeNotifier {
       // Fetch from API
       final response = await ApiService.getCategories();
 
-      if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> categoryData = response['data'] as List<dynamic>;
+      if (response['success'] == true) {
+        final categoryData = response['data'] as List<dynamic>? ?? [];
         _categories = categoryData
             .map(
               (json) => CategoryModel.fromJsonMap(json as Map<String, dynamic>),
             )
             .toList();
 
-        // Save to SQLite
-        await DatabaseService.saveCategories(
-          categoryData.map((e) => e as Map<String, dynamic>).toList(),
-        );
+        // Save to SQLite or clear cache when API returns empty (deleted)
+        if (categoryData.isEmpty) {
+          await DatabaseService.clearCategories();
+        } else {
+          await DatabaseService.saveCategories(
+            categoryData.map((e) => e as Map<String, dynamic>).toList(),
+          );
+        }
       } else {
         _errorMessage =
             response['message'] as String? ?? 'Failed to load categories';
@@ -133,21 +137,22 @@ class ProductProvider with ChangeNotifier {
   Future<void> _refreshCategoriesFromApi() async {
     try {
       final response = await ApiService.getCategories();
-      if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> categoryData = response['data'] as List<dynamic>;
-        await DatabaseService.saveCategories(
-          categoryData.map((e) => e as Map<String, dynamic>).toList(),
-        );
-        // Update UI if currently viewing categories
-        if (_categories.isNotEmpty) {
-          _categories = categoryData
-              .map(
-                (json) =>
-                    CategoryModel.fromJsonMap(json as Map<String, dynamic>),
-              )
-              .toList();
-          notifyListeners();
+      if (response['success'] == true) {
+        final categoryData = response['data'] as List<dynamic>? ?? [];
+        if (categoryData.isEmpty) {
+          await DatabaseService.clearCategories();
+        } else {
+          await DatabaseService.saveCategories(
+            categoryData.map((e) => e as Map<String, dynamic>).toList(),
+          );
         }
+        _categories = categoryData
+            .map(
+              (json) =>
+                  CategoryModel.fromJsonMap(json as Map<String, dynamic>),
+            )
+            .toList();
+        notifyListeners();
       }
     } catch (e) {
       debugPrint('[ProductProvider] Background refresh failed: $e');
@@ -619,8 +624,8 @@ class ProductProvider with ChangeNotifier {
       // Fetch from API
       final response = await ApiService.getCarousels();
 
-      if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> carouselData = response['data'] as List<dynamic>;
+      if (response['success'] == true) {
+        final carouselData = response['data'] as List<dynamic>? ?? [];
         _carousels = carouselData
             .map(
               (json) => CarouselModel.fromJsonMap(json as Map<String, dynamic>),
@@ -631,10 +636,14 @@ class ProductProvider with ChangeNotifier {
         // Sort by order
         _carousels.sort((a, b) => a.order.compareTo(b.order));
 
-        // Save to SQLite
-        await DatabaseService.saveCarousels(
-          carouselData.map((e) => e as Map<String, dynamic>).toList(),
-        );
+        // Save to SQLite or clear cache when API returns empty (deleted)
+        if (carouselData.isEmpty) {
+          await DatabaseService.clearCarousels();
+        } else {
+          await DatabaseService.saveCarousels(
+            carouselData.map((e) => e as Map<String, dynamic>).toList(),
+          );
+        }
       }
 
       _isLoading = false;
@@ -661,12 +670,15 @@ class ProductProvider with ChangeNotifier {
   Future<void> _refreshCarouselsFromApi() async {
     try {
       final response = await ApiService.getCarousels();
-      if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> carouselData = response['data'] as List<dynamic>;
-        await DatabaseService.saveCarousels(
-          carouselData.map((e) => e as Map<String, dynamic>).toList(),
-        );
-        // Update UI
+      if (response['success'] == true) {
+        final carouselData = response['data'] as List<dynamic>? ?? [];
+        if (carouselData.isEmpty) {
+          await DatabaseService.clearCarousels();
+        } else {
+          await DatabaseService.saveCarousels(
+            carouselData.map((e) => e as Map<String, dynamic>).toList(),
+          );
+        }
         _carousels = carouselData
             .map(
               (json) => CarouselModel.fromJsonMap(json as Map<String, dynamic>),
@@ -728,8 +740,8 @@ class ProductProvider with ChangeNotifier {
       // Fetch from API
       final response = await ApiService.getActiveFlashSales();
 
-      if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> flashSaleData = response['data'] as List<dynamic>;
+      if (response['success'] == true) {
+        final flashSaleData = response['data'] as List<dynamic>? ?? [];
         _flashSales = flashSaleData
             .map(
               (json) =>
@@ -741,13 +753,17 @@ class ProductProvider with ChangeNotifier {
         // Sort by order
         _flashSales.sort((a, b) => a.order.compareTo(b.order));
 
-        // Save to SQLite
-        await DatabaseService.saveFlashSales(
-          flashSaleData.map((e) => e as Map<String, dynamic>).toList(),
-        );
+        // Save to SQLite or clear cache when API returns empty (deleted)
+        if (flashSaleData.isEmpty) {
+          await DatabaseService.clearFlashSales();
+          _flashSaleProducts = [];
+        } else {
+          await DatabaseService.saveFlashSales(
+            flashSaleData.map((e) => e as Map<String, dynamic>).toList(),
+          );
 
-        // Use products from the first flash sale if available in the response
-        if (_flashSales.isNotEmpty) {
+          // Use products from the first flash sale if available in the response
+          if (_flashSales.isNotEmpty) {
           final firstSale = _flashSales.first;
           if (firstSale.products.isNotEmpty) {
             _flashSaleProducts = firstSale.products;
@@ -797,6 +813,7 @@ class ProductProvider with ChangeNotifier {
               );
             }
           }
+          }
         }
       } else {
         _errorMessage =
@@ -827,20 +844,26 @@ class ProductProvider with ChangeNotifier {
   Future<void> _refreshFlashSalesFromApi() async {
     try {
       final response = await ApiService.getActiveFlashSales();
-      if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> flashSaleData = response['data'] as List<dynamic>;
-        await DatabaseService.saveFlashSales(
-          flashSaleData.map((e) => e as Map<String, dynamic>).toList(),
-        );
-        // Update UI
-        _flashSales = flashSaleData
-            .map(
-              (json) =>
-                  FlashSaleModel.fromJsonMap(json as Map<String, dynamic>),
-            )
-            .where((flashSale) => flashSale.isActive)
-            .toList();
-        _flashSales.sort((a, b) => a.order.compareTo(b.order));
+      if (response['success'] == true) {
+        final flashSaleData = response['data'] as List<dynamic>? ?? [];
+        if (flashSaleData.isEmpty) {
+          await DatabaseService.clearFlashSales();
+          _flashSales = [];
+          _flashSaleProducts = [];
+        } else {
+          await DatabaseService.saveFlashSales(
+            flashSaleData.map((e) => e as Map<String, dynamic>).toList(),
+          );
+          // Update UI
+          _flashSales = flashSaleData
+              .map(
+                (json) =>
+                    FlashSaleModel.fromJsonMap(json as Map<String, dynamic>),
+              )
+              .where((flashSale) => flashSale.isActive)
+              .toList();
+          _flashSales.sort((a, b) => a.order.compareTo(b.order));
+        }
         notifyListeners();
       }
     } catch (e) {

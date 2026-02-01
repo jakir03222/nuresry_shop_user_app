@@ -61,17 +61,17 @@ class BestSellingProductCard extends StatelessWidget {
                     child: CachedNetworkImage(
                       imageUrl: product.imageUrl,
                       width: double.infinity,
-                      height: 130,
+                      height: 120,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
-                        height: 130,
+                        height: 120,
                         color: AppColors.borderGrey,
                         child: const Center(
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        height: 130,
+                        height: 120,
                         color: AppColors.borderGrey,
                         child: const Icon(
                           Icons.image_not_supported_outlined,
@@ -108,22 +108,26 @@ class BestSellingProductCard extends StatelessWidget {
               ),
             ),
           ),
-          // Content - name and price (constrained to avoid overflow in narrow cards)
+          // Content - name (2 lines fixed) and price
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  product.name,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                SizedBox(
+                  height: 36,
+                  child: Text(
+                    product.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 // Price row: original struck through + final price

@@ -144,7 +144,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                   crossAxisCount: isTablet ? 3 : 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 0.75,
+                  childAspectRatio: 0.65,
                 ),
                 itemCount: 6,
                 itemBuilder: (context, index) => const ShimmerLoader(
@@ -281,7 +281,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                     crossAxisCount: isTablet ? 3 : 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 0.75,
+                    childAspectRatio: 0.65,
                   ),
                   itemCount: productProvider.searchResults.length +
                       (productProvider.isLoadingMoreSearch ? 2 : 0),

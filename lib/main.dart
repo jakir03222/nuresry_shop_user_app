@@ -6,7 +6,8 @@ import 'core/services/sync_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/product_provider.dart';
 import 'presentation/providers/cart_provider.dart';
-import 'presentation/providers/favorite_provider.dart';
+import 'presentation/providers/favorite_provider.dart'; 
+
 import 'presentation/providers/address_provider.dart';
 import 'presentation/providers/order_provider.dart';
 import 'presentation/providers/contact_provider.dart';

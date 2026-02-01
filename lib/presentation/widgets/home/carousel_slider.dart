@@ -199,7 +199,7 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
           ),
         ),
         const SizedBox(height: 8),
-        // Page Indicators
+        // Page Indicators - green active, grey inactive (same as image)
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -211,8 +211,8 @@ class _CarouselSliderWidgetState extends State<CarouselSliderWidget> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _currentPage == index
-                    ? AppColors.primaryBlue
-                    : Color.lerp(AppColors.textSecondary, Colors.transparent, 0.7)!,
+                    ? AppColors.primary
+                    : AppColors.borderGrey,
               ),
             ),
           ),

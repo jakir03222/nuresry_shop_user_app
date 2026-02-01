@@ -25,16 +25,15 @@ class FlashSalePromotionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final flashSale = this.flashSale;
 
-    // Discount badge text: percentage shows "X%", fixed shows "X৳"
+    // Discount badge text: percentage shows "X% OFF", fixed shows "X৳ OFF"
     final discountBadgeText = flashSale.discountType == 'percentage'
-        ? '${flashSale.discountValue}%'
-        : '${flashSale.discountValue}${AppConstants.currencySymbol}';
+        ? '${flashSale.discountValue}% OFF'
+        : '${flashSale.discountValue}${AppConstants.currencySymbol} OFF';
 
     return Container(
       decoration: BoxDecoration(
         color: AppColors.backgroundWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderGrey.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.06),
@@ -53,29 +52,29 @@ class FlashSalePromotionCard extends StatelessWidget {
             child: InkWell(
               onTap: onTap,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
+                top: Radius.circular(20),
               ),
               child: Stack(
                 clipBehavior: Clip.antiAlias,
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
+                      top: Radius.circular(20),
                     ),
                     child: CachedNetworkImage(
                       imageUrl: flashSale.image,
                       width: double.infinity,
-                      height: 130,
+                      height: 120,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
-                        height: 130,
+                        height: 120,
                         color: AppColors.borderGrey,
                         child: const Center(
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        height: 130,
+                        height: 120,
                         color: AppColors.borderGrey,
                         child: const Icon(
                           Icons.image_not_supported_outlined,
@@ -85,28 +84,24 @@ class FlashSalePromotionCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Discount badge - top-left, light grey with dark border
+                  // Discount badge - top-left, red oval (same as image)
                   Positioned(
                     top: 6,
                     left: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
+                        horizontal: 10,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.textSecondary.withOpacity(0.6),
-                          width: 1,
-                        ),
+                        color: AppColors.flashSaleRed,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         discountBadgeText,
                         style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 10,
+                          color: AppColors.textWhite,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -122,16 +117,20 @@ class FlashSalePromotionCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  flashSale.title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                SizedBox(
+                  height: 36,
+                  child: Text(
+                    flashSale.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -173,7 +172,7 @@ class FlashSalePromotionCard extends StatelessWidget {
                   minimumSize: Size.zero,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),

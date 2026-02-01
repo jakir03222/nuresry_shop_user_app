@@ -689,6 +689,27 @@ class DatabaseService {
     }).toList();
   }
 
+  /// Clear categories from cache (when API returns empty/deleted)
+  static Future<void> clearCategories() async {
+    final db = await database;
+    await db.delete(tableCategories);
+    debugPrint('[DatabaseService] Cleared categories from cache');
+  }
+
+  /// Clear carousels from cache (when API returns empty/deleted)
+  static Future<void> clearCarousels() async {
+    final db = await database;
+    await db.delete(tableCarousels);
+    debugPrint('[DatabaseService] Cleared carousels from cache');
+  }
+
+  /// Clear flash sales from cache (when API returns empty/deleted)
+  static Future<void> clearFlashSales() async {
+    final db = await database;
+    await db.delete(tableFlashSales);
+    debugPrint('[DatabaseService] Cleared flash sales from cache');
+  }
+
   // ========== Cart ==========
   static Future<void> saveCart(Map<String, dynamic> cartData) async {
     final db = await database;
